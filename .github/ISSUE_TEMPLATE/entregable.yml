@@ -1,0 +1,32 @@
+name: Entregable
+description: Una unidad de trabajo del plan (ficha, escenario, clase, pantalla, conector…)
+labels: []
+body:
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo
+      options:
+        - Usuario web y seguridad (Camilo)
+        - Integración (Bryan)
+        - Datos y alertas (Cristina)
+    validations:
+      required: true
+  - type: input
+    id: trazabilidad
+    attributes:
+      label: Casos de uso y requisitos
+      placeholder: CU-03, RF-10, RNF-03
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Qué hay que entregar
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      value: |
+        - [ ]
+        - [ ]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "d01",
+    "nombre": "Andrea Torres",
+    "correo": "atorres@ejemplo.test",
+    "idRedmine": 11,
+    "usuarioGitlab": "atorres",
+    "usuarioGlpi": "atorres"
+  },
+  {
+    "id": "d02",
+    "nombre": "Diego Jaramillo",
+    "correo": "djaramillo@ejemplo.test",
+    "idRedmine": 12,
+    "usuarioGitlab": "djaramillo",
+    "usuarioGlpi": "djaramillo"
+  },
+  {
+    "id": "d03",
+    "nombre": "María José Ochoa",
+    "correo": "mjochoa@ejemplo.test",
+    "idRedmine": 13,
+    "usuarioGitlab": "mjochoa",
+    "usuarioGlpi": "mjochoa"
+  },
+  {
+    "id": "d04",
+    "nombre": "Pablo Castillo",
+    "correo": "pcastillo@ejemplo.test",
+    "idRedmine": 14,
+    "usuarioGitlab": "pcastillo",
+    "usuarioGlpi": "pcastillo"
+  },
+  {
+    "id": "d05",
+    "nombre": "Sofía Armijos",
+    "correo": "sarmijos@ejemplo.test",
+    "idRedmine": 15,
+    "usuarioGitlab": "sarmijos",
+    "usuarioGlpi": "sarmijos"
+  },
+  {
+    "id": "d06",
+    "nombre": "Luis Cueva",
+    "correo": "lcueva@ejemplo.test",
+    "idRedmine": 16,
+    "usuarioGitlab": "lcueva",
+    "usuarioGlpi": "lcueva"
+  },
+  {
+    "id": "d07",
+    "nombre": "Daniela Paredes",
+    "correo": "dparedes@ejemplo.test",
+    "idRedmine": 17,
+    "usuarioGitlab": "dparedes",
+    "usuarioGlpi": "dparedes"
+  }
+]

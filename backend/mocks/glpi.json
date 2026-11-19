@@ -1,0 +1,67 @@
+{
+  "tickets": [
+    {
+      "id": 9001,
+      "name": "[INC-2026-031] Error al imprimir comprobante de depósito",
+      "status": 2,
+      "priority": 4,
+      "date": "2026-11-12T09:00:00Z",
+      "date_mod": "2026-11-19T07:45:00Z",
+      "tecnico_asignado": "atorres"
+    },
+    {
+      "id": 9002,
+      "name": "[INC-2026-034] Cierre diario tarda más de 2 horas",
+      "status": 2,
+      "priority": 4,
+      "date": "2026-11-17T09:00:00Z",
+      "date_mod": "2026-11-19T07:45:00Z",
+      "tecnico_asignado": "atorres"
+    },
+    {
+      "id": 9003,
+      "name": "[INC-2026-030] Socios reciben dos SMS por transacción",
+      "status": 2,
+      "priority": 4,
+      "date": "2026-11-10T09:00:00Z",
+      "date_mod": "2026-11-19T07:45:00Z",
+      "tecnico_asignado": "mjochoa"
+    },
+    {
+      "id": 9004,
+      "name": "[INC-2026-032] Cuota mal calculada en refinanciamiento",
+      "status": 2,
+      "priority": 4,
+      "date": "2026-11-14T09:00:00Z",
+      "date_mod": "2026-11-19T07:45:00Z",
+      "tecnico_asignado": "pcastillo"
+    },
+    {
+      "id": 9005,
+      "name": "[INC-2026-029] Tarjeta rechazada en cajeros de otras redes",
+      "status": 2,
+      "priority": 4,
+      "date": "2026-11-06T09:00:00Z",
+      "date_mod": "2026-11-19T07:45:00Z",
+      "tecnico_asignado": "sarmijos"
+    },
+    {
+      "id": 9006,
+      "name": "[INC-2026-035] Servicio de pagos no responde a ratos",
+      "status": 2,
+      "priority": 4,
+      "date": "2026-11-18T09:00:00Z",
+      "date_mod": "2026-11-19T07:45:00Z",
+      "tecnico_asignado": "dparedes"
+    },
+    {
+      "id": 9007,
+      "name": "[INC-2026-999] Impresora de agencia sin conexión",
+      "status": 2,
+      "priority": 3,
+      "date": "2026-11-18T10:00:00Z",
+      "date_mod": "2026-11-18T11:00:00Z",
+      "tecnico_asignado": "lcueva"
+    }
+  ]
+}

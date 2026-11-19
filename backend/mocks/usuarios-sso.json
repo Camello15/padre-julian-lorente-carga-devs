@@ -1,0 +1,24 @@
+[
+  {
+    "id": "u-pmo",
+    "idSso": "sso-0001",
+    "nombre": "Lucía Ramírez",
+    "correo": "lramirez@ejemplo.test",
+    "rol": "PMO"
+  },
+  {
+    "id": "u-tec",
+    "idSso": "sso-0002",
+    "nombre": "Andrea Torres",
+    "correo": "atorres@ejemplo.test",
+    "rol": "TECNICO",
+    "desarrolladorId": "d01"
+  },
+  {
+    "id": "u-adm",
+    "idSso": "sso-0003",
+    "nombre": "Jorge Salinas",
+    "correo": "jsalinas@ejemplo.test",
+    "rol": "ADMINISTRATIVO"
+  }
+]

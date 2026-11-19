@@ -1,0 +1,24 @@
+{
+  "mensajes": [
+    {
+      "canal": "#ti-despliegues",
+      "texto": "Se programó el paso a producción de INC-2026-031 para hoy a las 18:00.",
+      "fecha": "2026-11-19T08:10:00Z"
+    },
+    {
+      "canal": "#ti-despliegues",
+      "texto": "POA-2026-004 listo para certificación del área de negocio.",
+      "fecha": "2026-11-18T17:30:00Z"
+    },
+    {
+      "canal": "#ti-general",
+      "texto": "Recuerden la reunión de planificación del viernes.",
+      "fecha": "2026-11-18T09:00:00Z"
+    },
+    {
+      "canal": "#ti-incidentes",
+      "texto": "INC-2026-035 escalado: afecta pagos en dos agencias.",
+      "fecha": "2026-11-19T09:20:00Z"
+    }
+  ]
+}
