@@ -1,3 +1,121 @@
 # padre-julian-lorente-carga-devs
 
-Proyecto académico UTPL – Reto 2 COAC Padre Julián Lorente.
+Proyecto académico UTPL – Reto 2 COAC Padre Julián Lorente: dashboard que centraliza la carga de trabajo de los desarrolladores (RedMine, GitLab, GLPI, Rocket Chat).
+
+El área de TI de la cooperativa reparte su trabajo entre RedMine, GitLab, GLPI y Rocket Chat. Este prototipo lee las cuatro herramientas por API cada 15 minutos, unifica los datos por desarrollador y los muestra en un dashboard con carga, avance, filtros, alertas y exportación.
+
+> **Estado:** prototipo con **datos de prueba** y **SSO simulado**. Todavía no hay acceso a las APIs reales de la cooperativa. Todos los nombres de personas, proyectos y peticiones son ficticios.
+
+## Equipo
+
+| Integrante | Módulo |
+|---|---|
+| Camilo Velepucha | Usuario web y seguridad (frontend y UX) |
+| Bryan Villa | Integración (backend, conectores, cron) |
+| Cristina Feijo | Datos y alertas (base de datos, cálculo, alertas) |
+
+## Estructura
+
+```
+├── frontend/            React + Vite + Chart.js: login y dashboard
+├── backend/             Node.js + Express: API, conectores y sincronización
+│   ├── src/conectores/      Conector (abstracta) y un conector por fuente
+│   ├── src/sincronizacion/  cron cada 15 min, 3 reintentos por fuente, cruce por código
+│   ├── src/datos/           avance por etapa, carga, umbral, filtros, alertas
+│   ├── src/auth/            SSO simulado y roles (PMO, Técnico, Administrativo)
+│   └── mocks/               datos de prueba de las cuatro fuentes
+├── database/schema.sql  esquema PostgreSQL basado en el diagrama de clases
+├── docs/                contexto, requisitos, casos de uso, escenarios, diagramas, glosario
+├── .github/             CI, plantillas de issues y de pull request
+└── docker-compose.yml   postgres + backend + frontend
+```
+
+## Arrancar en local
+
+Requisitos: **Node.js 20.12 o superior** (recomendado 22) y npm.
+
+```bash
+git clone https://github.com/Camello15/padre-julian-lorente-carga-devs.git
+cd padre-julian-lorente-carga-devs
+git switch develop
+npm install
+npm run dev
+```
+
+- Web: http://localhost:5173
+- API: http://localhost:3000/api/salud
+
+En la pantalla de ingreso elige un **rol de prueba** (PMO, Técnico o Administrativo) y pulsa *Ingresar con SSO de la cooperativa*. El rol Técnico entra como "Andrea Torres" y solo ve su propia carga.
+
+No hace falta un archivo `.env` para empezar. Si quieres cambiar algo (umbral, porcentajes de avance, simular la caída de una fuente), copia `.env.example` a `.env`.
+
+### ChromeOS (Linux en Chromebook)
+
+Abre http://localhost:5173 en Chrome. ChromeOS reenvía automáticamente los puertos del contenedor Linux. Si no carga, ve a *Configuración → Desarrolladores → Entorno de desarrollo de Linux → Reenvío de puertos* y agrega el puerto 5173.
+
+### Comandos
+
+| Comando (desde la raíz) | Qué hace |
+|---|---|
+| `npm run dev` | Backend y frontend en modo desarrollo |
+| `npm run lint` | ESLint en los dos proyectos |
+| `npm test` | Pruebas (node:test en backend, Vitest en frontend) |
+| `npm run test:cobertura` | Pruebas con reporte de cobertura (lcov) |
+| `npm run build` | Build de producción del frontend |
+
+### Con Docker
+
+```bash
+cp .env.example .env      # define POSTGRES_PASSWORD
+docker compose up --build
+```
+
+Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql`. Por ahora el backend guarda los datos en memoria; la conexión a PostgreSQL es el siguiente paso del módulo Datos y alertas.
+
+## API
+
+Todas las rutas, salvo `/api/salud` y `/api/auth/login`, exigen la cabecera `Authorization: Bearer <token>`.
+
+| Método y ruta | Descripción |
+|---|---|
+| `POST /api/auth/login` | SSO simulado. Cuerpo: `{ "rol": "PMO" \| "TECNICO" \| "ADMINISTRATIVO" }` |
+| `GET /api/carga` | Indicadores de carga por desarrollador y resumen |
+| `GET /api/peticiones` | Peticiones con su etapa y avance |
+| `GET /api/alertas` | Alertas por superar el umbral |
+| `GET /api/sincronizacion/estado` | Última sincronización y estado de cada fuente |
+| `GET /api/catalogos` | Opciones de los filtros |
+
+`/api/carga` y `/api/peticiones` aceptan los filtros de RF-11: `desarrollador`, `tipo` (`POA`, `REC`, `INICIATIVA`, `INCIDENTE`), `proyecto`, `modulo`, `desde` y `hasta` (`AAAA-MM-DD`). Con el rol Técnico, el filtro de desarrollador siempre es el propio.
+
+## Avance por etapa
+
+RedMine no registra el avance real, así que se estima según la etapa: Análisis 10 %, Desarrollo 40 %, Certificación 70 %, Despliegue 90 % y Estabilización 100 %. **Es una propuesta del equipo, pendiente de validar con la cooperativa.** Se cambia con la variable `AVANCE_POR_ETAPA` (ver `.env.example`).
+
+## Integración continua
+
+El workflow `.github/workflows/ci.yml` corre en cada push y pull request a `develop` y `main`:
+
+1. Instala las dependencias de backend y frontend (`npm ci`).
+2. Lint y pruebas con cobertura.
+3. Análisis con **SonarQube Cloud** (acción oficial `SonarSource/sonarqube-scan-action`). Se omite con un aviso mientras no exista el secreto `SONAR_TOKEN`.
+4. Build de las imágenes Docker de backend y frontend.
+
+### Configurar SonarQube Cloud (una sola vez, lo hace el dueño del repo)
+
+1. Entra a https://sonarcloud.io y pulsa **Log in → GitHub**. Autoriza con la cuenta `Camello15`.
+2. Pulsa **+ → Create new organization → Import an organization from GitHub**. Elige tu cuenta personal `Camello15` e instala la app de SonarQube Cloud solo para el repositorio `padre-julian-lorente-carga-devs`.
+3. Elige el plan **Free** (los repositorios públicos son gratis). Anota la **Organization key** (suele ser `camello15`).
+4. Pulsa **+ → Analyze new project**, marca `padre-julian-lorente-carga-devs` y pulsa **Set up**. Para "new code", elige **Previous version**.
+5. En el proyecto, ve a **Administration → Analysis Method** y **desactiva Automatic Analysis**. Este repositorio analiza desde GitHub Actions para enviar la cobertura.
+6. En la misma página, elige **With GitHub Actions**. SonarQube Cloud te mostrará un **SONAR_TOKEN**. Cópialo; no lo pegues en ningún archivo.
+7. En GitHub: **Settings → Secrets and variables → Actions → New repository secret**. Nombre: `SONAR_TOKEN`; valor: el token del paso anterior.
+8. Revisa que `sonar.organization` y `sonar.projectKey` en `sonar-project.properties` coincidan con lo que muestra SonarQube Cloud (**Information** del proyecto). Si no coinciden, corrígelos.
+9. Vuelve a ejecutar el workflow (Actions → CI → Re-run) y revisa el resultado en SonarQube Cloud.
+
+### Llevar el pipeline a GitLab CI
+
+La cooperativa usa GitLab. El pipeline se puede llevar **casi igual** a un `.gitlab-ci.yml`: los mismos comandos (`npm ci`, `npm run lint`, `npm run test:cobertura`, `docker build …`) en etapas `test`, `sonar` y `build`. Para SonarQube se usa la imagen `sonarsource/sonar-scanner-cli` con la variable `SONAR_TOKEN` definida en *Settings → CI/CD → Variables* (enmascarada). El archivo `sonar-project.properties` se reutiliza sin cambios.
+
+## Documentación
+
+Toda la documentación está en [`docs/`](docs/README.md). Las reglas para colaborar (ramas, commits, pull requests) están en [CONTRIBUTING.md](CONTRIBUTING.md).

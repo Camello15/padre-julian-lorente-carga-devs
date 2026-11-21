@@ -1,0 +1,1803 @@
+{
+  "total_count": 40,
+  "offset": 0,
+  "limit": 100,
+  "issues": [
+    {
+      "id": 4101,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Nueva app de banca móvil: consulta de saldos",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-08-04",
+      "due_date": "2026-12-18",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-001"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Canales digitales",
+            "Captaciones"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4102,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Solicitud de crédito en línea",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-10-01",
+      "due_date": "2027-02-26",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-002"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos",
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4103,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Ajuste del cálculo de interés en ahorro programado",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-10-20",
+      "due_date": "2026-11-28",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-014"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Certificación"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Captaciones"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4104,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Nuevo campo de actividad económica del socio",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-11-03",
+      "due_date": "2026-12-05",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-019"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4105,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Error al imprimir comprobante de depósito",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-11-12",
+      "due_date": "2026-11-21",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-031"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Despliegue"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Cajas"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4106,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Lentitud en el cierre diario",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-11-17",
+      "due_date": "2026-11-24",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-034"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Contabilidad"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4107,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Tablero interno de monitoreo de servidores",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-09-15",
+      "due_date": "2026-12-30",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.001"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4108,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Validación de cédula en apertura de cuenta",
+      "assigned_to": {
+        "id": 11,
+        "name": "Andrea Torres"
+      },
+      "start_date": "2026-09-01",
+      "due_date": "2026-11-15",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-022"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Estabilización"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Captaciones"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4109,
+      "project": {
+        "id": 3,
+        "identifier": "reportes-control",
+        "name": "Reportes a entes de control"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Reporte de liquidez para el ente de control",
+      "assigned_to": {
+        "id": 12,
+        "name": "Diego Jaramillo"
+      },
+      "start_date": "2026-07-01",
+      "due_date": "2026-11-30",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-003"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Certificación"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Reportes regulatorios",
+            "Contabilidad"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4110,
+      "project": {
+        "id": 3,
+        "identifier": "reportes-control",
+        "name": "Reportes a entes de control"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Cambio de formato en estructura de cartera",
+      "assigned_to": {
+        "id": 12,
+        "name": "Diego Jaramillo"
+      },
+      "start_date": "2026-10-06",
+      "due_date": "2026-12-12",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-011"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos",
+            "Reportes regulatorios"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4111,
+      "project": {
+        "id": 3,
+        "identifier": "reportes-control",
+        "name": "Reportes a entes de control"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Descuadre en reporte de captaciones",
+      "assigned_to": {
+        "id": 12,
+        "name": "Diego Jaramillo"
+      },
+      "start_date": "2026-11-02",
+      "due_date": "2026-11-14",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-028"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Estabilización"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Reportes regulatorios"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4112,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Automatizar respaldo de bases de pruebas",
+      "assigned_to": {
+        "id": 12,
+        "name": "Diego Jaramillo"
+      },
+      "start_date": "2026-11-10",
+      "due_date": "2027-01-30",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.002"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4113,
+      "project": {
+        "id": 3,
+        "identifier": "reportes-control",
+        "name": "Reportes a entes de control"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Nuevo indicador de morosidad por agencia",
+      "assigned_to": {
+        "id": 12,
+        "name": "Diego Jaramillo"
+      },
+      "start_date": "2026-11-16",
+      "due_date": "2026-12-20",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-025"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos",
+            "Reportes regulatorios"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4114,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Pago de servicios básicos en ventanilla",
+      "assigned_to": {
+        "id": 13,
+        "name": "María José Ochoa"
+      },
+      "start_date": "2026-06-02",
+      "due_date": "2026-11-27",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-004"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Despliegue"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Cajas",
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4115,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Límite diario de transferencias configurable",
+      "assigned_to": {
+        "id": 13,
+        "name": "María José Ochoa"
+      },
+      "start_date": "2026-10-13",
+      "due_date": "2026-11-29",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-016"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Certificación"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4116,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Notificación por SMS duplicada",
+      "assigned_to": {
+        "id": 13,
+        "name": "María José Ochoa"
+      },
+      "start_date": "2026-11-10",
+      "due_date": "2026-11-22",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-030"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4117,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 5,
+        "name": "Cerrada",
+        "is_closed": true
+      },
+      "subject": "Actualización de tasas pasivas",
+      "assigned_to": {
+        "id": 13,
+        "name": "María José Ochoa"
+      },
+      "start_date": "2026-08-18",
+      "due_date": "2026-10-30",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-008"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Estabilización"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Captaciones"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4118,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Plantilla común de pipelines de GitLab",
+      "assigned_to": {
+        "id": 13,
+        "name": "María José Ochoa"
+      },
+      "start_date": "2026-10-01",
+      "due_date": "2026-12-15",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.003"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4119,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Originación de microcréditos con firma electrónica",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-07-15",
+      "due_date": "2027-01-29",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-005"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4120,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Precalificación automática de créditos de consumo",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-11-04",
+      "due_date": "2027-03-31",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-006"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4121,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Tabla de amortización en PDF para el socio",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-10-08",
+      "due_date": "2026-11-26",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-012"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Certificación"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4122,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Reestructuración de créditos vencidos",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-11-05",
+      "due_date": "2026-12-19",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-020"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos",
+            "Contabilidad"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4123,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Cuota mal calculada en refinanciamiento",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-11-14",
+      "due_date": "2026-11-25",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-032"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4124,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Garante no aparece en la solicitud",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-11-16",
+      "due_date": "2026-11-23",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-033"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4125,
+      "project": {
+        "id": 2,
+        "identifier": "creditos-digitales",
+        "name": "Créditos digitales"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Pruebas automáticas del módulo de créditos",
+      "assigned_to": {
+        "id": 14,
+        "name": "Pablo Castillo"
+      },
+      "start_date": "2026-11-01",
+      "due_date": "2027-02-15",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.004"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Créditos"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4126,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Bloqueo y desbloqueo de tarjetas desde la app",
+      "assigned_to": {
+        "id": 15,
+        "name": "Sofía Armijos"
+      },
+      "start_date": "2026-08-11",
+      "due_date": "2026-12-04",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-007"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Certificación"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Tarjetas",
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4127,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Extracto de tarjeta de débito en línea",
+      "assigned_to": {
+        "id": 15,
+        "name": "Sofía Armijos"
+      },
+      "start_date": "2026-10-27",
+      "due_date": "2026-12-11",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-017"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Tarjetas"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4128,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Aviso de vencimiento de póliza por correo",
+      "assigned_to": {
+        "id": 15,
+        "name": "Sofía Armijos"
+      },
+      "start_date": "2026-11-11",
+      "due_date": "2026-12-18",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-021"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Captaciones"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4129,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Tarjeta rechazada en cajeros de otras redes",
+      "assigned_to": {
+        "id": 15,
+        "name": "Sofía Armijos"
+      },
+      "start_date": "2026-11-06",
+      "due_date": "2026-11-20",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-029"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Despliegue"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Tarjetas"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4130,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Catálogo de servicios de TI",
+      "assigned_to": {
+        "id": 15,
+        "name": "Sofía Armijos"
+      },
+      "start_date": "2026-10-15",
+      "due_date": "2027-01-15",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.005"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4131,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Cambio de texto en la pantalla de bienvenida",
+      "assigned_to": {
+        "id": 15,
+        "name": "Sofía Armijos"
+      },
+      "start_date": "2026-11-01",
+      "due_date": "2026-11-18",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-023"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Estabilización"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4132,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Conciliación bancaria automática",
+      "assigned_to": {
+        "id": 16,
+        "name": "Luis Cueva"
+      },
+      "start_date": "2026-09-01",
+      "due_date": "2027-01-22",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-008"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Contabilidad"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4133,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Nueva cuenta contable para provisiones",
+      "assigned_to": {
+        "id": 16,
+        "name": "Luis Cueva"
+      },
+      "start_date": "2026-10-22",
+      "due_date": "2026-11-30",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-018"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Certificación"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Contabilidad"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4134,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 5,
+        "name": "Cerrada",
+        "is_closed": true
+      },
+      "subject": "Asiento contable duplicado en cierre de mes",
+      "assigned_to": {
+        "id": 16,
+        "name": "Luis Cueva"
+      },
+      "start_date": "2026-10-31",
+      "due_date": "2026-11-08",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-027"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Estabilización"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Contabilidad"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4135,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Documentar procedimientos de despliegue",
+      "assigned_to": {
+        "id": 16,
+        "name": "Luis Cueva"
+      },
+      "start_date": "2026-11-12",
+      "due_date": "2026-12-31",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.006"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4136,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 1,
+        "name": "POA"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Apertura de cuenta de ahorro digital",
+      "assigned_to": {
+        "id": 17,
+        "name": "Daniela Paredes"
+      },
+      "start_date": "2026-10-05",
+      "due_date": "2027-03-12",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "POA-2026-009"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Captaciones",
+            "Canales digitales"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4137,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Certificado de depósito a plazo en PDF",
+      "assigned_to": {
+        "id": 17,
+        "name": "Daniela Paredes"
+      },
+      "start_date": "2026-10-14",
+      "due_date": "2026-11-26",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "REC-2026-015"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Despliegue"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Captaciones"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4138,
+      "project": {
+        "id": 1,
+        "identifier": "banca-movil",
+        "name": "Banca móvil"
+      },
+      "tracker": {
+        "id": 4,
+        "name": "Incidente"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Caída intermitente del servicio de pagos",
+      "assigned_to": {
+        "id": 17,
+        "name": "Daniela Paredes"
+      },
+      "start_date": "2026-11-18",
+      "due_date": "2026-11-22",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "INC-2026-035"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Análisis"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": [
+            "Canales digitales",
+            "Cajas"
+          ]
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4139,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 3,
+        "name": "Iniciativa"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Migrar contenedores a nueva versión de Docker",
+      "assigned_to": {
+        "id": 17,
+        "name": "Daniela Paredes"
+      },
+      "start_date": "2026-10-20",
+      "due_date": "2026-12-22",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": "iniciativa.ti.007"
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-19T08:30:00Z"
+    },
+    {
+      "id": 4140,
+      "project": {
+        "id": 4,
+        "identifier": "soporte",
+        "name": "Soporte y mantenimiento"
+      },
+      "tracker": {
+        "id": 2,
+        "name": "REC"
+      },
+      "status": {
+        "id": 2,
+        "name": "En curso",
+        "is_closed": false
+      },
+      "subject": "Revisar permisos de usuarios de agencia",
+      "assigned_to": {
+        "id": 13,
+        "name": "María José Ochoa"
+      },
+      "start_date": "2026-11-10",
+      "due_date": "2026-11-30",
+      "custom_fields": [
+        {
+          "id": 1,
+          "name": "Código",
+          "value": ""
+        },
+        {
+          "id": 2,
+          "name": "Etapa",
+          "value": "Desarrollo"
+        },
+        {
+          "id": 3,
+          "name": "Módulo del core",
+          "multiple": true,
+          "value": []
+        }
+      ],
+      "updated_on": "2026-11-18T15:00:00Z"
+    }
+  ]
+}
