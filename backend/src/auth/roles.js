@@ -15,7 +15,7 @@ export const Rol = Object.freeze({
   ADMINISTRATIVO: Object.freeze({
     clave: 'ADMINISTRATIVO',
     nombre: 'Administrativo',
-    permisos: Object.freeze(['ver:todos']),
+    permisos: Object.freeze(['ver:todos', 'configurar']),
     soloPropios: false,
   }),
 });
