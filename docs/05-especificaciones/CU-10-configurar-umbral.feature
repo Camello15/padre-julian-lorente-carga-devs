@@ -1,17 +1,18 @@
 # language: es
 # Responsable: Cristina. Requisitos: RF-12.
-# PLANTILLA: completar los escenarios con los pasos reales del caso de uso.
 Característica: CU-10 Configurar umbral
   Como Administrador TI
-  Quiero <objetivo>
-  Para <beneficio>
+  Quiero configurar el número máximo de peticiones abiertas permitidas por desarrollador
+  Para ajustar el criterio de generación de alertas según la capacidad operativa del equipo
 
-  Escenario: <escenario principal>
-    Dado <contexto inicial>
-    Cuando <acción>
-    Entonces <resultado esperado>
+  Escenario: Actualizar el umbral máximo de peticiones abiertas con un valor válido
+    Dado que el usuario ha iniciado sesión con permisos de administración
+    Cuando establece el nuevo umbral máximo en 6 peticiones abiertas
+    Entonces el sistema guarda el nuevo umbral
+    Y recalcula el estado de sobrecarga y alertas de los desarrolladores con el nuevo límite
 
-  Escenario: <escenario alternativo o de error>
-    Dado <contexto inicial>
-    Cuando <acción>
-    Entonces <resultado esperado>
+  Escenario: Rechazar un valor de umbral inválido
+    Dado que el usuario ha iniciado sesión con permisos de administración
+    Cuando intenta configurar el umbral máximo con un valor menor o igual a 0
+    Entonces el sistema rechaza la operación con un mensaje de validación
+    Y conserva el umbral anterior sin cambios
