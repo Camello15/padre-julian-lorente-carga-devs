@@ -50,6 +50,7 @@ export const config = Object.freeze({
       url: texto(process.env.ROCKETCHAT_URL),
       userId: process.env.ROCKETCHAT_USER_ID ?? '',
       token: process.env.ROCKETCHAT_TOKEN ?? '',
+      canalesLectura: [...new Set(texto(process.env.ROCKETCHAT_CANALES_LECTURA).split(',').map((canal) => canal.trim()).filter(Boolean))],
       canalAlertas: texto(process.env.ROCKETCHAT_CANAL_ALERTAS, '#ti-alertas'),
     },
   },
