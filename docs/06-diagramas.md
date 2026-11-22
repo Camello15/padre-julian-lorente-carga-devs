@@ -80,7 +80,7 @@ Diagrama base. Cristina se encarga de unir el diagrama de clases final con los a
 | Módulo | Clases | Responsable |
 |---|---|---|
 | Usuario web y seguridad | Usuario, Rol, Sesion, Filtro, Reporte | Camilo |
-| Integración | Fuente, Conector y sus hijas, Sincronizacion, RegistroFallo | Bryan |
+| Integración | Fuente (objeto de configuración), Conector y sus hijas, Sincronizacion, EstadoSincronizacion y RegistroFallo (estructuras) | Bryan |
 | Datos y alertas | Desarrollador, Peticion, Proyecto, ModuloCore, ActividadCodigo, IndicadorCarga, Umbral, Alerta, RegistroNoReconocido | Cristina |
 
 ```mermaid
@@ -126,29 +126,63 @@ classDiagram
         +generarExcel() File
         +generarPdf() File
     }
-    class Fuente {
+    class Fuente <<objeto_configuracion>> {
         +String nombre
         +String urlApi
         +bool activa
     }
     class Conector {
         <<abstract>>
-        +leerDatos(DateTime desde) List
+        +Object fuente
+        +Conector(fuente)
+        +leerDatos(desde) Promise~List~
+        +leerMock(archivo) Promise~Object~
     }
-    class ConectorRedmine
-    class ConectorGitlab
-    class ConectorGlpi
-    class ConectorRocketChat
+    class ConectorRedmine {
+        +leerDatos(desde) Promise~List~
+    }
+    class ConectorGitlab {
+        +leerDatos(desde) Promise~List~
+    }
+    class ConectorGlpi {
+        +leerDatos(desde) Promise~List~
+    }
+    class ConectorRocketChat {
+        +leerDatos(desde) Promise~List~
+    }
     class Sincronizacion {
-        +DateTime inicio
-        +DateTime fin
-        +String estado
-        +ejecutar()
+        +Array~Conector~ conectores
+        +AlmacenMemoria almacen
+        +Array~Object~ desarrolladores
+        +Object umbral
+        +int reintentos
+        +int esperaReintentoMs
+        +Function reloj
+        +bool enEjecucion
+        +leerConReintentos(conector, desde) Promise
+        +ejecutar() Promise
     }
-    class RegistroFallo {
-        +DateTime fecha
+    class EstadoSincronizacion <<estructura>> {
+        +String estado
+        +String inicio
+        +String fin
+        +String ultimaExitosa
+        +Array~Object~ fuentes
+        +Array~RegistroFallo~ fallos
+        +int registrosNoReconocidos
+    }
+    class RegistroFallo <<estructura>> {
+        +String fuente
+        +String fecha
         +int intentos
         +String mensaje
+    }
+    class AlmacenMemoria {
+        +Map ultimosDatosPorFuente
+        +EstadoSincronizacion estadoSincronizacion
+        +guardarDatosFuente(nombreFuente, datos, fecha)
+        +ultimosDatosFuente(nombreFuente)
+        +guardarResultado(resultado)
     }
     class Desarrollador {
         +String id
@@ -215,9 +249,13 @@ classDiagram
     Conector <|-- ConectorGitlab
     Conector <|-- ConectorGlpi
     Conector <|-- ConectorRocketChat
-    Fuente "1" --> "1" Conector : se lee con
-    Sincronizacion "1" --> "1..*" Fuente : recorre
-    Sincronizacion "1" --> "0..*" RegistroFallo : registra
+    Conector --> "1" Fuente : fuente (configuración)
+    Sincronizacion --> "0..*" Conector : conectores (array)
+    Sincronizacion --> "1" AlmacenMemoria : almacen
+    AlmacenMemoria "1" --> "1" EstadoSincronizacion : estadoSincronizacion
+    Sincronizacion ..> EstadoSincronizacion : crea y actualiza
+    EstadoSincronizacion --> "0..50" RegistroFallo : fallos (historial)
+    Sincronizacion ..> RegistroFallo : crea objetos de fallo
     Proyecto "1" o-- "0..*" Peticion : agrupa
     Desarrollador "1" --> "0..*" Peticion : tiene asignadas
     Peticion "0..*" --> "0..*" ModuloCore : afecta
@@ -228,4 +266,4 @@ classDiagram
     Sincronizacion "1" --> "0..*" RegistroNoReconocido : detecta
 ```
 
-> En el prototipo, las clases de dominio se implementan como objetos y funciones de JavaScript (por ejemplo, `calcularAvance()` en `backend/src/datos/avance.js`). La correspondencia con las tablas está en `database/schema.sql`.
+> En Integración, `Fuente` se muestra como el objeto de configuración asociado a cada conector; `EstadoSincronizacion` y `RegistroFallo` son estructuras de datos, no clases JavaScript. `leerDatos()` y `leerMock()` son asíncronos y sus firmas muestran la promesa que devuelven. Los campos de `EstadoSincronizacion` pertenecen al objeto guardado por `AlmacenMemoria`, no a la instancia de `Sincronizacion`. En el prototipo, otras clases de dominio también se implementan como objetos y funciones de JavaScript (por ejemplo, `calcularAvance()` en `backend/src/datos/avance.js`). La correspondencia con las tablas está en `database/schema.sql`.
