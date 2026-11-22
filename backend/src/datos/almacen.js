@@ -25,17 +25,41 @@ export class AlmacenMemoria {
   }
 
   guardarResultado(resultado) {
-    const registros = (resultado.registrosNoReconocidos ?? this.registrosNoReconocidos).map((reg, idx) => ({
-      id: reg.id ?? `reg-${reg.fuente ?? 'fuente'}-${reg.codigoOriginal ?? idx}-${idx + 1}`,
-      revisado: Boolean(reg.revisado),
-      peticionAsignada: reg.peticionAsignada ?? null,
-      ...reg,
-    }));
+    const { registrosNoReconocidos, ...resto } = resultado;
+    Object.assign(this, resto);
+    if (registrosNoReconocidos) {
+      this.registrosNoReconocidos = this.conservarRevisiones(registrosNoReconocidos);
+    }
+    this.actualizarPendientes();
+  }
 
-    Object.assign(this, {
-      ...resultado,
-      registrosNoReconocidos: registros,
+  /**
+   * Cada Sincronización vuelve a detectar los mismos registros no reconocidos (CU-11).
+   * El id es estable (fuente + código original) para que la revisión hecha por el
+   * Administrador TI no se pierda en la siguiente Sincronización.
+   */
+  conservarRevisiones(nuevos) {
+    const anteriores = new Map(this.registrosNoReconocidos.map((r) => [r.id, r]));
+    const repeticiones = new Map();
+    return nuevos.map((reg) => {
+      const clave = `${reg.fuente}:${reg.codigoOriginal}`;
+      const vez = (repeticiones.get(clave) ?? 0) + 1;
+      repeticiones.set(clave, vez);
+      const id = vez === 1 ? clave : `${clave}#${vez}`;
+      const previo = anteriores.get(id);
+      return {
+        ...reg,
+        id,
+        revisado: previo?.revisado ?? Boolean(reg.revisado),
+        peticionAsignada: previo?.peticionAsignada ?? reg.peticionAsignada ?? null,
+      };
     });
+  }
+
+  actualizarPendientes() {
+    if (typeof this.estadoSincronizacion.registrosNoReconocidos === 'number') {
+      this.estadoSincronizacion.registrosNoReconocidos = this.registrosNoReconocidos.filter((r) => !r.revisado).length;
+    }
   }
 
   listarRegistrosNoReconocidos({ incluirRevisados = false } = {}) {
@@ -50,9 +74,7 @@ export class AlmacenMemoria {
     if (peticionCodigo) {
       registro.peticionAsignada = peticionCodigo;
     }
-    if (typeof this.estadoSincronizacion.registrosNoReconocidos === 'number') {
-      this.estadoSincronizacion.registrosNoReconocidos = this.registrosNoReconocidos.filter((r) => !r.revisado).length;
-    }
+    this.actualizarPendientes();
     return registro;
   }
 }
