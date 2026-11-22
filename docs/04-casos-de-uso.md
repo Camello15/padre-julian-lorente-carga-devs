@@ -194,14 +194,14 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-08 |
 | **Nombre** | Calcular carga y avance |
-| **Actores** | Programador de tareas |
-| **Descripción** | |
-| **Precondiciones** | |
-| **Flujo principal** | 1. <br>2. <br>3. |
-| **Flujos alternativos** | |
-| **Excepciones** | |
-| **Postcondiciones** | |
-| **Requisitos relacionados** | |
+| **Actores** | Programador de tareas (cron) |
+| **Descripción** | Calcula la cantidad de peticiones abiertas asignadas a cada desarrollador, las clasifica por tipo de trabajo, estima su avance promedio según la etapa de RedMine y evalúa si supera el umbral configurado. |
+| **Precondiciones** | Existen desarrolladores activos y peticiones normalizadas tras ejecutar la sincronización (CU-05 y CU-07). |
+| **Flujo principal** | 1. El sistema filtra las peticiones en estado `abierta` asignadas a cada desarrollador.<br>2. Clasifica las peticiones abiertas por `TipoTrabajo` (`POA`, `REC`, `INICIATIVA`, `INCIDENTE`).<br>3. Estima el porcentaje de avance de cada petición según su `Etapa` (10 %, 40 %, 70 %, 90 %, 100 %) y obtiene el promedio.<br>4. Compara el total de peticiones abiertas contra `Umbral.maxPeticiones` y genera el `IndicadorCarga`. |
+| **Flujos alternativos** | **FA-01 (Sin peticiones abiertas):** Si el desarrollador no tiene peticiones abiertas, su carga es `0`, su avance promedio es `0 %` y `superaUmbral` es `false`. |
+| **Excepciones** | **EX-01 (Etapa no reconocida):** Si una petición tiene una etapa fuera del catálogo, su avance estimado se toma como `0 %` sin interrumpir el cálculo del resto. |
+| **Postcondiciones** | Se almacenan los indicadores actualizados (`IndicadorCarga`) disponibles para consulta en el dashboard y evaluación de alertas (CU-09). |
+| **Requisitos relacionados** | RF-08, RF-10 |
 
 ### CU-09 Enviar alerta
 
@@ -211,14 +211,14 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-09 |
 | **Nombre** | Enviar alerta |
-| **Actores** | Programador de tareas |
-| **Descripción** | |
-| **Precondiciones** | |
-| **Flujo principal** | 1. <br>2. <br>3. |
-| **Flujos alternativos** | |
-| **Excepciones** | |
-| **Postcondiciones** | |
-| **Requisitos relacionados** | |
+| **Actores** | Programador de tareas (cron) |
+| **Descripción** | Genera una alerta visible en el dashboard y envía una notificación al canal de Rocket Chat configurado cuando la carga de un desarrollador supera el umbral permitido. |
+| **Precondiciones** | Se ha ejecutado el cálculo de carga (CU-08) y existe al menos un desarrollador con `peticionesAbiertas > umbral.maxPeticiones`. |
+| **Flujo principal** | 1. El sistema identifica los indicadores donde `superaUmbral` es verdadero.<br>2. Crea un objeto `Alerta` con el detalle del desarrollador, sus peticiones abiertas y el umbral vigente.<br>3. Verifica si ya se envió previamente esa misma alerta para evitar notificaciones duplicadas.<br>4. Envía el mensaje mediante `POST /api/v1/chat.postMessage` a Rocket Chat y registra la alerta en el almacén. |
+| **Flujos alternativos** | **FA-01 (Modo pruebas o sin Rocket Chat):** Si `usarMocks` está activo o no hay URL configurada, la alerta se registra en pantalla con `enviadaRocketChat = false`.<br>**FA-02 (Alerta ya notificada):** Si la carga sobre el umbral no cambió desde el último envío para ese desarrollador, se mantiene la alerta en pantalla sin reenviar mensaje a Rocket Chat. |
+| **Excepciones** | **EX-01 (Fallo de conexión con Rocket Chat):** Si la API de Rocket Chat responde con error o timeout, se registra el error en bitácora y la alerta queda visible en el dashboard sin abortar la sincronización. |
+| **Postcondiciones** | Las alertas vigentes quedan disponibles en `GET /api/alertas` y notificadas en Rocket Chat. |
+| **Requisitos relacionados** | RF-12 |
 
 ### CU-10 Configurar umbral
 
@@ -229,13 +229,13 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **ID** | CU-10 |
 | **Nombre** | Configurar umbral |
 | **Actores** | Administrador TI |
-| **Descripción** | |
-| **Precondiciones** | |
-| **Flujo principal** | 1. <br>2. <br>3. |
-| **Flujos alternativos** | |
-| **Excepciones** | |
-| **Postcondiciones** | |
-| **Requisitos relacionados** | |
+| **Descripción** | Permite al Administrador TI modificar el límite máximo de peticiones abiertas por desarrollador antes de disparar alertas de sobrecarga. |
+| **Precondiciones** | El usuario ha iniciado sesión (CU-01) y posee rol con permiso de administración (`ADMINISTRATIVO` / `configurar:umbral`). |
+| **Flujo principal** | 1. El Administrador TI envía el nuevo valor entero positivo para `maxPeticiones`.<br>2. El sistema valida que el valor sea un entero mayor o igual a `1`.<br>3. Actualiza el umbral vigente registrando quién realizó el cambio y la fecha.<br>4. Recalcula el indicador `superaUmbral` y las alertas vigentes con el nuevo límite. |
+| **Flujos alternativos** | Ninguno. |
+| **Excepciones** | **EX-01 (Valor inválido):** Si `maxPeticiones` no es un entero positivo (`<= 0` o no numérico), el sistema devuelve HTTP `400` y conserva el umbral previo.<br>**EX-02 (Sin permisos):** Si un usuario sin permiso administrativo intenta modificar el umbral, el sistema devuelve HTTP `403`. |
+| **Postcondiciones** | El nuevo umbral queda activo para las consultas inmediatas y futuras sincronizaciones. |
+| **Requisitos relacionados** | RF-12, RNF-02 |
 
 ### CU-11 Revisar registros no reconocidos
 
@@ -246,10 +246,10 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **ID** | CU-11 |
 | **Nombre** | Revisar registros no reconocidos |
 | **Actores** | Administrador TI |
-| **Descripción** | |
-| **Precondiciones** | |
-| **Flujo principal** | 1. <br>2. <br>3. |
-| **Flujos alternativos** | |
-| **Excepciones** | |
-| **Postcondiciones** | |
-| **Requisitos relacionados** | |
+| **Descripción** | Permite consultar los registros provenientes de GitLab, GLPI o Rocket Chat cuyo código no coincidió con ninguna petición de RedMine durante el cruce (CU-07), para asociarlos manualmente o marcarlos como revisados. |
+| **Precondiciones** | El usuario ha iniciado sesión (CU-01) con permisos administrativos y existen registros detectados en `RegistroNoReconocido`. |
+| **Flujo principal** | 1. El Administrador TI consulta el listado de registros no reconocidos pendientes.<br>2. El sistema muestra la fuente de origen, código original, motivo y fecha de detección.<br>3. El administrador selecciona un registro y lo marca como revisado (o lo vincula a un código de petición válido).<br>4. El sistema actualiza el estado del registro a `revisado = true`. |
+| **Flujos alternativos** | **FA-01 (Filtrar por estado):** El administrador puede consultar tanto los registros pendientes como los ya revisados. |
+| **Excepciones** | **EX-01 (Registro inexistente):** Si el identificador enviado no existe, el sistema responde HTTP `404`.<br>**EX-02 (Sin permisos):** Si el usuario no tiene rol administrativo, el sistema responde HTTP `403`. |
+| **Postcondiciones** | El registro queda marcado como revisado y disminuye el contador de registros pendientes en el resumen de sincronización. |
+| **Requisitos relacionados** | RF-06 |

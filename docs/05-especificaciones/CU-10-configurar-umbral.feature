@@ -1,14 +1,18 @@
-> Responsable: **Cristina**. Módulo: Datos y alertas. Escenarios: [`CU-10-configurar-umbral.feature`](05-especificaciones/CU-10-configurar-umbral.feature)
+# language: es
+# Responsable: Cristina. Requisitos: RF-12.
+Característica: CU-10 Configurar umbral
+  Como Administrador TI
+  Quiero configurar el número máximo de peticiones abiertas permitidas por desarrollador
+  Para ajustar el criterio de generación de alertas según la capacidad operativa del equipo
 
-| Campo | Contenido |
-|---|---|
-| **ID** | CU-10 |
-| **Nombre** | Configurar umbral |
-| **Actores** | Administrador TI |
-| **Descripción** | Permite al Administrador TI modificar el límite máximo de peticiones abiertas por desarrollador antes de disparar alertas de sobrecarga. |
-| **Precondiciones** | El usuario ha iniciado sesión (CU-01) y posee rol con permiso de administración (`ADMINISTRATIVO` / `configurar:umbral`). |
-| **Flujo principal** | 1. El Administrador TI envía el nuevo valor entero positivo para `maxPeticiones`.<br>2. El sistema valida que el valor sea un entero mayor o igual a `1`.<br>3. Actualiza el umbral vigente registrando quién realizó el cambio y la fecha.<br>4. Recalcula el indicador `superaUmbral` y las alertas vigentes con el nuevo límite. |
-| **Flujos alternativos** | Ninguno. |
-| **Excepciones** | **EX-01 (Valor inválido):** Si `maxPeticiones` no es un entero positivo (`<= 0` o no numérico), el sistema devuelve HTTP `400` y conserva el umbral previo.<br>**EX-02 (Sin permisos):** Si un usuario sin permiso administrativo intenta modificar el umbral, el sistema devuelve HTTP `403`. |
-| **Postcondiciones** | El nuevo umbral queda activo para las consultas inmediatas y futuras sincronizaciones. |
-| **Requisitos relacionados** | RF-12, RNF-02 |
+  Escenario: Actualizar el umbral máximo de peticiones abiertas con un valor válido
+    Dado que el usuario ha iniciado sesión con permisos de administración
+    Cuando establece el nuevo umbral máximo en 6 peticiones abiertas
+    Entonces el sistema guarda el nuevo umbral
+    Y recalcula el estado de sobrecarga y alertas de los desarrolladores con el nuevo límite
+
+  Escenario: Rechazar un valor de umbral inválido
+    Dado que el usuario ha iniciado sesión con permisos de administración
+    Cuando intenta configurar el umbral máximo con un valor menor o igual a 0
+    Entonces el sistema rechaza la operación con un mensaje de validación
+    Y conserva el umbral anterior sin cambios
