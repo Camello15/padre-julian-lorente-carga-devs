@@ -20,4 +20,9 @@ export const ROLES_PRUEBA = [
   { clave: 'PMO', nombre: 'PMO', descripcion: 'Ve la carga de todo el equipo y puede exportar reportes.' },
   { clave: 'TECNICO', nombre: 'Técnico', descripcion: 'Ve solo su propia carga. Usuario de prueba: Andrea Torres.' },
   { clave: 'ADMINISTRATIVO', nombre: 'Administrativo', descripcion: 'Ve la carga de todo el equipo, sin exportar.' },
+  {
+    clave: 'ADMINISTRADOR_TI',
+    nombre: 'Administrador TI',
+    descripcion: 'Ve la carga del equipo, configura el umbral y revisa los registros no reconocidos.',
+  },
 ];

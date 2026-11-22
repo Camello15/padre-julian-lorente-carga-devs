@@ -23,4 +23,4 @@ body:
     id: rol
     attributes:
       label: Rol con el que se probó
-      placeholder: PMO, Técnico o Administrativo
+      placeholder: PMO, Técnico, Administrativo o Administrador TI

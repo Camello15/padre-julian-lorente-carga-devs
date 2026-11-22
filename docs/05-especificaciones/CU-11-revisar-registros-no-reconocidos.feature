@@ -14,3 +14,9 @@ Característica: CU-11 Revisar registros no reconocidos
     Dado que existe un registro no reconocido pendiente de revisión
     Cuando el Administrador TI lo asocia al código de una petición válida o lo marca como revisado
     Entonces el registro se actualiza y deja de figurar como pendiente en la bandeja
+
+  Escenario: Impedir la revisión a un rol distinto de Administrador TI
+    Dado que el usuario ha iniciado sesión con el rol Administrativo
+    Cuando intenta marcar un registro no reconocido como revisado
+    Entonces el sistema rechaza la operación por falta de permisos
+    Y el registro sigue pendiente en la bandeja

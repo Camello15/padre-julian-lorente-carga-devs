@@ -20,5 +20,12 @@
     "nombre": "Jorge Salinas",
     "correo": "jsalinas@ejemplo.test",
     "rol": "ADMINISTRATIVO"
+  },
+  {
+    "id": "u-ati",
+    "idSso": "sso-0004",
+    "nombre": "Marco Ochoa",
+    "correo": "mochoa@ejemplo.test",
+    "rol": "ADMINISTRADOR_TI"
   }
 ]

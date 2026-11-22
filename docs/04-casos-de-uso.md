@@ -6,8 +6,8 @@
 |---|---|
 | PMO | Persona de proyectos. Ve la carga de todo el equipo y exporta reportes. |
 | Usuario técnico | Desarrollador. Solo ve su propia carga. |
-| Usuario administrativo | Personal administrativo que consulta la carga del equipo. |
-| Administrador TI | Configura el umbral y revisa los registros no reconocidos. |
+| Usuario administrativo | Personal administrativo que consulta la carga del equipo. No configura el umbral. |
+| Administrador TI | Configura el umbral y revisa los registros no reconocidos. Es el único rol con el permiso `configurar`. |
 | Programador de tareas (cron) | Dispara la sincronización cada 15 minutos. |
 | SSO de la cooperativa | Autentica a los usuarios. |
 | Fuentes | RedMine, GitLab, GLPI y Rocket Chat. |
@@ -230,10 +230,10 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **Nombre** | Configurar umbral |
 | **Actores** | Administrador TI |
 | **Descripción** | Permite al Administrador TI modificar el límite máximo de peticiones abiertas por desarrollador antes de disparar alertas de sobrecarga. |
-| **Precondiciones** | El usuario ha iniciado sesión (CU-01) y posee rol con permiso de administración (`ADMINISTRATIVO` / `configurar:umbral`). |
+| **Precondiciones** | El usuario ha iniciado sesión (CU-01) y tiene el rol Administrador TI (permiso `configurar`). |
 | **Flujo principal** | 1. El Administrador TI envía el nuevo valor entero positivo para `maxPeticiones`.<br>2. El sistema valida que el valor sea un entero mayor o igual a `1`.<br>3. Actualiza el umbral vigente registrando quién realizó el cambio y la fecha.<br>4. Recalcula el indicador `superaUmbral` y las alertas vigentes con el nuevo límite. |
 | **Flujos alternativos** | Ninguno. |
-| **Excepciones** | **EX-01 (Valor inválido):** Si `maxPeticiones` no es un entero positivo (`<= 0` o no numérico), el sistema devuelve HTTP `400` y conserva el umbral previo.<br>**EX-02 (Sin permisos):** Si un usuario sin permiso administrativo intenta modificar el umbral, el sistema devuelve HTTP `403`. |
+| **Excepciones** | **EX-01 (Valor inválido):** Si `maxPeticiones` no es un entero positivo (`<= 0` o no numérico), el sistema devuelve HTTP `400` y conserva el umbral previo.<br>**EX-02 (Sin permisos):** Si un usuario sin el rol Administrador TI (por ejemplo, Administrativo) intenta modificar el umbral, el sistema devuelve HTTP `403`. |
 | **Postcondiciones** | El nuevo umbral queda activo para las consultas inmediatas y futuras sincronizaciones. |
 | **Requisitos relacionados** | RF-12, RNF-02 |
 
@@ -247,9 +247,9 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **Nombre** | Revisar registros no reconocidos |
 | **Actores** | Administrador TI |
 | **Descripción** | Permite consultar los registros provenientes de GitLab, GLPI o Rocket Chat cuyo código no coincidió con ninguna petición de RedMine durante el cruce (CU-07), para asociarlos manualmente o marcarlos como revisados. |
-| **Precondiciones** | El usuario ha iniciado sesión (CU-01) con permisos administrativos y existen registros detectados en `RegistroNoReconocido`. |
+| **Precondiciones** | El usuario ha iniciado sesión (CU-01) con el rol Administrador TI y existen registros detectados en `RegistroNoReconocido`. |
 | **Flujo principal** | 1. El Administrador TI consulta el listado de registros no reconocidos pendientes.<br>2. El sistema muestra la fuente de origen, código original, motivo y fecha de detección.<br>3. El administrador selecciona un registro y lo marca como revisado (o lo vincula a un código de petición válido).<br>4. El sistema actualiza el estado del registro a `revisado = true`. |
 | **Flujos alternativos** | **FA-01 (Filtrar por estado):** El administrador puede consultar tanto los registros pendientes como los ya revisados. |
-| **Excepciones** | **EX-01 (Registro inexistente):** Si el identificador enviado no existe, el sistema responde HTTP `404`.<br>**EX-02 (Sin permisos):** Si el usuario no tiene rol administrativo, el sistema responde HTTP `403`. |
+| **Excepciones** | **EX-01 (Registro inexistente):** Si el identificador enviado no existe, el sistema responde HTTP `404`.<br>**EX-02 (Sin permisos):** Si el usuario no tiene el rol Administrador TI, el sistema responde HTTP `403`. |
 | **Postcondiciones** | El registro queda marcado como revisado y disminuye el contador de registros pendientes en el resumen de sincronización. |
 | **Requisitos relacionados** | RF-06 |

@@ -1,7 +1,7 @@
 # language: es
 # Responsable: Camilo. Requisitos: RF-01, RNF-02.
 Característica: CU-01 Iniciar sesión con SSO
-  Como usuario de la cooperativa (PMO, Técnico o Administrativo)
+  Como usuario de la cooperativa (PMO, Técnico, Administrativo o Administrador TI)
   Quiero ingresar con mi cuenta del SSO de la cooperativa
   Para consultar la carga de trabajo sin crear otra contraseña
 

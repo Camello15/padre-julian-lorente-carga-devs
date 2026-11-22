@@ -8,7 +8,7 @@ CREATE TYPE etapa AS ENUM ('ANALISIS', 'DESARROLLO', 'CERTIFICACION', 'DESPLIEGU
 -- ---------- Usuario web y seguridad ----------
 CREATE TABLE rol (
   id            SMALLSERIAL PRIMARY KEY,
-  nombre        VARCHAR(30) NOT NULL UNIQUE,          -- PMO, Técnico, Administrativo
+  nombre        VARCHAR(30) NOT NULL UNIQUE,          -- PMO, Técnico, Administrativo, Administrador TI
   permisos      TEXT[] NOT NULL DEFAULT '{}',
   solo_propios  BOOLEAN NOT NULL DEFAULT FALSE
 );
@@ -160,7 +160,8 @@ CREATE INDEX idx_no_reconocido_pendiente ON registro_no_reconocido (detectado_en
 INSERT INTO rol (nombre, permisos, solo_propios) VALUES
   ('PMO', '{ver:todos,exportar}', FALSE),
   ('Técnico', '{ver:propios}', TRUE),
-  ('Administrativo', '{ver:todos}', FALSE);
+  ('Administrativo', '{ver:todos}', FALSE),
+  ('Administrador TI', '{ver:todos,configurar}', FALSE);
 
 INSERT INTO fuente (nombre) VALUES ('redmine'), ('gitlab'), ('glpi'), ('rocketchat');
 

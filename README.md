@@ -22,7 +22,7 @@ El área de TI de la cooperativa reparte su trabajo entre RedMine, GitLab, GLPI 
 │   ├── src/conectores/      Conector (abstracta) y un conector por fuente
 │   ├── src/sincronizacion/  cron cada 15 min, 3 reintentos por fuente, cruce por código
 │   ├── src/datos/           avance por etapa, carga, umbral, filtros, alertas
-│   ├── src/auth/            SSO simulado y roles (PMO, Técnico, Administrativo)
+│   ├── src/auth/            SSO simulado y roles (PMO, Técnico, Administrativo, Administrador TI)
 │   └── mocks/               datos de prueba de las cuatro fuentes
 ├── database/schema.sql  esquema PostgreSQL basado en el diagrama de clases
 ├── docs/                contexto, requisitos, casos de uso, escenarios, diagramas, glosario
@@ -45,7 +45,7 @@ npm run dev
 - Web: http://localhost:5173
 - API: http://localhost:3000/api/salud
 
-En la pantalla de ingreso elige un **rol de prueba** (PMO, Técnico o Administrativo) y pulsa *Ingresar con SSO de la cooperativa*. El rol Técnico entra como "Andrea Torres" y solo ve su propia carga.
+En la pantalla de ingreso elige un **rol de prueba** (PMO, Técnico, Administrativo o Administrador TI) y pulsa *Ingresar con SSO de la cooperativa*. El rol Técnico entra como "Andrea Torres" y solo ve su propia carga. Solo el Administrador TI ve el panel para cambiar el umbral y revisar los registros no reconocidos.
 
 No hace falta un archivo `.env` para empezar. Si quieres cambiar algo (umbral, porcentajes de avance, simular la caída de una fuente), copia `.env.example` a `.env`.
 
@@ -78,12 +78,15 @@ Todas las rutas, salvo `/api/salud` y `/api/auth/login`, exigen la cabecera `Aut
 
 | Método y ruta | Descripción |
 |---|---|
-| `POST /api/auth/login` | SSO simulado. Cuerpo: `{ "rol": "PMO" \| "TECNICO" \| "ADMINISTRATIVO" }` |
+| `POST /api/auth/login` | SSO simulado. Cuerpo: `{ "rol": "PMO" \| "TECNICO" \| "ADMINISTRATIVO" \| "ADMINISTRADOR_TI" }` |
 | `GET /api/carga` | Indicadores de carga por desarrollador y resumen |
 | `GET /api/peticiones` | Peticiones con su etapa y avance |
 | `GET /api/alertas` | Alertas por superar el umbral |
 | `GET /api/sincronizacion/estado` | Última sincronización y estado de cada fuente |
 | `GET /api/catalogos` | Opciones de los filtros |
+| `PUT /api/umbral` | Cambia el umbral (`{ "maxPeticiones": 6 }`). Solo Administrador TI |
+| `GET /api/registros-no-reconocidos` | Registros pendientes de revisión (`?todos=true` incluye los revisados). Solo Administrador TI |
+| `PATCH /api/registros-no-reconocidos/:id` | Marca un registro como revisado (`{ "peticionCodigo": "POA-001" }` opcional). Solo Administrador TI |
 
 `/api/carga` y `/api/peticiones` aceptan los filtros de RF-11: `desarrollador`, `tipo` (`POA`, `REC`, `INICIATIVA`, `INCIDENTE`), `proyecto`, `modulo`, `desde` y `hasta` (`AAAA-MM-DD`). Con el rol Técnico, el filtro de desarrollador siempre es el propio.
 

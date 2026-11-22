@@ -18,14 +18,14 @@ const publico = ({ token, inicio, expira, usuario }) => ({
 export function rutasAuth(servicioSesiones) {
   const router = Router();
 
-  // POST /api/auth/login  { rol: "PMO" | "TECNICO" | "ADMINISTRATIVO" }  — SSO simulado (CU-01).
+  // POST /api/auth/login  { rol: "PMO" | "TECNICO" | "ADMINISTRATIVO" | "ADMINISTRADOR_TI" }  — SSO simulado (CU-01).
   router.post('/login', (req, res) => {
     if (config.sso.modo !== 'mock') {
       return res.status(501).json({ error: 'El SSO real de la cooperativa aún no está integrado.' });
     }
     const sesion = servicioSesiones.iniciarSesionMock(req.body?.rol);
     if (!sesion) {
-      return res.status(400).json({ error: 'Elige un rol de prueba válido: PMO, TECNICO o ADMINISTRATIVO.' });
+      return res.status(400).json({ error: 'Elige un rol de prueba válido: PMO, TECNICO, ADMINISTRATIVO o ADMINISTRADOR_TI.' });
     }
     return res.status(201).json(publico(sesion));
   });
