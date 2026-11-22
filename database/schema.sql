@@ -56,6 +56,14 @@ CREATE TABLE fuente (
   activa   BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+CREATE TABLE snapshot_fuente (
+  fuente_id  SMALLINT PRIMARY KEY REFERENCES fuente(id),
+  datos      JSONB NOT NULL CHECK (jsonb_typeof(datos) = 'array'),
+  fecha      TIMESTAMPTZ NOT NULL,
+  cursor     TIMESTAMPTZ,
+  metadatos  JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(metadatos) = 'array')
+);
+
 CREATE TABLE sincronizacion (
   id      BIGSERIAL PRIMARY KEY,
   inicio  TIMESTAMPTZ NOT NULL,
