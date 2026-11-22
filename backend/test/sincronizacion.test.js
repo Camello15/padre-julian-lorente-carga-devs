@@ -15,8 +15,9 @@ const issue = (codigo, etapa = 'Desarrollo') => ({
 
 class ConectorFalso extends Conector {
   constructor(nombre, respuestas) { super({ nombre, urlApi: '', activa: true }); this.respuestas = respuestas; this.llamadas = 0; this.desdes = []; }
-  async leerDatos(desde) {
+  async leerDatos(desde, desarrolladores) {
     this.desdes.push(desde);
+    if (desarrolladores) this.desarrolladoresRecibidos = desarrolladores;
     const r = this.respuestas[Math.min(this.llamadas++, this.respuestas.length - 1)];
     if (r instanceof Error) throw r;
     return r;
@@ -211,5 +212,62 @@ describe('Sincronización (RNF-01)', () => {
     await sync.ejecutar();
     assert.equal(almacen.cursorFuente('redmine'), '2026-11-22T10:20:00.000Z');
     assert.equal(almacen.ultimosDatosFuente('redmine').datos.length, 2);
+  });
+
+  it('sincroniza GitLab incrementalmente, combina eventos por ID y entrega el snapshot completo al normalizador', async () => {
+    let ahora = new Date('2026-11-22T10:00:00.000Z');
+    const almacen = new AlmacenMemoria();
+    const redmine = new ConectorFalso('redmine', [[issue('INC-2026-031')]]);
+    const eventosGitlab = new ConectorFalso('gitlab', [
+      [{ id: 'gitlab:17:commit:sha-1:branch:feature/INC-2026-031', tipo: 'commit', rama: 'feature/INC-2026-031', autor: 'puno', fecha: '2026-11-22T09:55:00.000Z' }],
+      [
+        { id: 'gitlab:17:commit:sha-1:branch:feature/INC-2026-031', tipo: 'commit', rama: 'feature/INC-2026-031', autor: 'puno', fecha: '2026-11-22T09:58:00.000Z', estado: 'success' },
+        { id: 'gitlab:17:pipeline:2', tipo: 'pipeline', rama: 'feature/INC-2026-031', autor: null, fecha: '2026-11-22T10:01:00.000Z', estado: 'failed' },
+      ],
+    ]);
+    const sync = new Sincronizacion({ conectores: [redmine, eventosGitlab], almacen, desarrolladores, umbral: { maxPeticiones: 0 }, reintentos: 3, esperaReintentoMs: 0, reloj: () => new Date(ahora) });
+
+    await sync.ejecutar();
+    const cursorInicial = almacen.cursorFuente('gitlab');
+    ahora = new Date('2026-11-22T10:10:00.000Z');
+    await sync.ejecutar();
+
+    assert.equal(eventosGitlab.desdes[0], null);
+    assert.equal(eventosGitlab.desdes[1].toISOString(), '2026-11-22T09:55:00.000Z');
+    assert.equal(eventosGitlab.desarrolladoresRecibidos, desarrolladores);
+    assert.notEqual(almacen.cursorFuente('gitlab'), cursorInicial);
+    const snapshot = almacen.ultimosDatosFuente('gitlab').datos;
+    assert.equal(snapshot.length, 2);
+    assert.equal(snapshot.filter((evento) => evento.id.includes('sha-1')).length, 1);
+    assert.equal(almacen.peticiones[0].actividades.length, 2);
+    assert.equal(almacen.peticiones[0].actividades.find((actividad) => actividad.tipo === 'commit').fecha, '2026-11-22T09:58:00.000Z');
+  });
+
+  it('mantiene el snapshot y cursor de GitLab si falla la lectura y confirma la recuperación posterior', async () => {
+    let ahora = new Date('2026-11-22T10:00:00.000Z');
+    const almacen = new AlmacenMemoria();
+    const redmine = new ConectorFalso('redmine', [[issue('INC-2026-031')]]);
+    const gitlab = new ConectorFalso('gitlab', [
+      [{ id: 'g:commit:1', tipo: 'commit', rama: 'feature/INC-2026-031', autor: 'puno', fecha: '2026-11-22T09:59:00.000Z' }],
+      new Error('fallo en página GitLab'),
+      new Error('fallo en página GitLab'),
+      new Error('fallo en página GitLab'),
+      [{ id: 'g:pipeline:2', tipo: 'pipeline', rama: 'feature/INC-2026-031', autor: null, fecha: '2026-11-22T10:20:00.000Z' }],
+    ]);
+    const sync = new Sincronizacion({ conectores: [redmine, gitlab], almacen, desarrolladores, umbral: { maxPeticiones: 0 }, reintentos: 3, esperaReintentoMs: 0, reloj: () => new Date(ahora) });
+    await sync.ejecutar();
+    const cursorAnterior = almacen.cursorFuente('gitlab');
+    const snapshotAnterior = almacen.ultimosDatosFuente('gitlab').datos;
+    ahora = new Date('2026-11-22T10:10:00.000Z');
+
+    const estadoFallido = await sync.ejecutar();
+    assert.equal(estadoFallido.estado, 'parcial');
+    assert.equal(almacen.cursorFuente('gitlab'), cursorAnterior);
+    assert.deepEqual(almacen.ultimosDatosFuente('gitlab').datos, snapshotAnterior);
+
+    ahora = new Date('2026-11-22T10:20:00.000Z');
+    await sync.ejecutar();
+    assert.equal(almacen.cursorFuente('gitlab'), '2026-11-22T10:20:00.000Z');
+    assert.equal(almacen.ultimosDatosFuente('gitlab').datos.length, 2);
   });
 });

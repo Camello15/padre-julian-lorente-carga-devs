@@ -4,6 +4,7 @@ import { unificar } from './normalizador.js';
 
 const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 const SOLAPAMIENTO_CURSOR_MS = 5 * 60 * 1000;
+const FUENTES_INCREMENTALES = new Set(['redmine', 'gitlab']);
 
 const cursorConSolapamiento = (cursor) => {
   if (!cursor) return null;
@@ -29,11 +30,14 @@ export class Sincronizacion {
     this.enEjecucion = false;
   }
 
-  async leerConReintentos(conector, desde) {
+  async leerConReintentos(conector, desde, desarrolladores) {
     let ultimoError;
     for (let intento = 1; intento <= this.reintentos; intento += 1) {
       try {
-        return { datos: await conector.leerDatos(desde), intentos: intento };
+        const datos = conector.fuente.nombre === 'gitlab'
+          ? await conector.leerDatos(desde, desarrolladores)
+          : await conector.leerDatos(desde);
+        return { datos, intentos: intento };
       } catch (error) {
         ultimoError = error;
         if (intento < this.reintentos) await esperar(this.esperaReintentoMs);
@@ -48,7 +52,7 @@ export class Sincronizacion {
     if (this.enEjecucion) return null; // Evita dos sincronizaciones a la vez.
     this.enEjecucion = true;
     const inicio = this.reloj();
-    const cursorCandidatoRedmine = new Date(inicio);
+    const cursorCandidato = new Date(inicio);
     const anterior = this.almacen.estadoSincronizacion;
 
     try {
@@ -56,12 +60,13 @@ export class Sincronizacion {
         this.conectores.map(async (conector) => {
           const nombre = conector.fuente.nombre;
           const cursorAnterior = this.almacen.cursorFuente?.(nombre) ?? null;
-          const desde = nombre === 'redmine' ? cursorConSolapamiento(cursorAnterior) : null;
+          const usaCursor = FUENTES_INCREMENTALES.has(nombre);
+          const desde = usaCursor ? cursorConSolapamiento(cursorAnterior) : null;
           try {
-            const { datos, intentos } = await this.leerConReintentos(conector, desde);
+            const { datos, intentos } = await this.leerConReintentos(conector, desde, this.desarrolladores);
             const fechaExitosa = this.reloj();
-            const incremental = nombre === 'redmine' && cursorAnterior !== null;
-            const snapshot = nombre === 'redmine'
+            const incremental = usaCursor && cursorAnterior !== null;
+            const snapshot = usaCursor
               ? this.almacen.combinarSnapshotFuente(nombre, datos, { incremental })
               : this.almacen.guardarSnapshotFuente(nombre, datos, fechaExitosa);
             return {
@@ -71,7 +76,7 @@ export class Sincronizacion {
               intentos,
               registros: snapshot.length,
               ultimaLecturaExitosa: fechaExitosa.toISOString(),
-              ...(nombre === 'redmine' ? { fechaExitosa, cursorCandidato: cursorCandidatoRedmine } : {}),
+              ...(usaCursor ? { fechaExitosa, cursorCandidato } : {}),
             };
           } catch (error) {
             const respaldo = this.almacen.ultimosDatosFuente(nombre);
@@ -116,13 +121,12 @@ export class Sincronizacion {
         alertas,
         estadoSincronizacion,
       });
-      const lecturaRedmine = lecturas.find((lectura) => lectura.nombre === 'redmine' && lectura.estado === 'ok');
-      if (lecturaRedmine) {
+      for (const lectura of lecturas.filter((item) => FUENTES_INCREMENTALES.has(item.nombre) && item.estado === 'ok')) {
         this.almacen.confirmarSnapshotFuente(
-          'redmine',
-          lecturaRedmine.datos,
-          lecturaRedmine.fechaExitosa,
-          lecturaRedmine.cursorCandidato,
+          lectura.nombre,
+          lectura.datos,
+          lectura.fechaExitosa,
+          lectura.cursorCandidato,
         );
       }
       return estadoSincronizacion;

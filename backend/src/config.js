@@ -36,7 +36,11 @@ export const config = Object.freeze({
   avancePorEtapaJson: texto(process.env.AVANCE_POR_ETAPA),
   fuentes: {
     redmine: { url: texto(process.env.REDMINE_URL), apiKey: process.env.REDMINE_API_KEY ?? '' },
-    gitlab: { url: texto(process.env.GITLAB_URL), token: process.env.GITLAB_TOKEN ?? '' },
+    gitlab: {
+      url: texto(process.env.GITLAB_URL),
+      token: process.env.GITLAB_TOKEN ?? '',
+      projectIds: texto(process.env.GITLAB_PROJECT_IDS).split(',').map((id) => id.trim()).filter(Boolean),
+    },
     glpi: {
       url: texto(process.env.GLPI_URL),
       appToken: process.env.GLPI_APP_TOKEN ?? '',
