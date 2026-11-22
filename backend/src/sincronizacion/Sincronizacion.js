@@ -3,6 +3,14 @@ import { calcularCarga } from '../datos/carga.js';
 import { unificar } from './normalizador.js';
 
 const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
+const SOLAPAMIENTO_CURSOR_MS = 5 * 60 * 1000;
+
+const cursorConSolapamiento = (cursor) => {
+  if (!cursor) return null;
+  const fecha = new Date(cursor);
+  if (Number.isNaN(fecha.getTime())) return null;
+  return new Date(fecha.getTime() - SOLAPAMIENTO_CURSOR_MS);
+};
 
 /**
  * Sincronización de Fuentes (CU-05).
@@ -40,17 +48,31 @@ export class Sincronizacion {
     if (this.enEjecucion) return null; // Evita dos sincronizaciones a la vez.
     this.enEjecucion = true;
     const inicio = this.reloj();
+    const cursorCandidatoRedmine = new Date(inicio);
     const anterior = this.almacen.estadoSincronizacion;
 
     try {
       const lecturas = await Promise.all(
         this.conectores.map(async (conector) => {
           const nombre = conector.fuente.nombre;
-          const desde = null; // TODO (Bryan): lectura incremental desde la última sincronización exitosa.
+          const cursorAnterior = this.almacen.cursorFuente?.(nombre) ?? null;
+          const desde = nombre === 'redmine' ? cursorConSolapamiento(cursorAnterior) : null;
           try {
             const { datos, intentos } = await this.leerConReintentos(conector, desde);
-            this.almacen.guardarDatosFuente(nombre, datos, this.reloj());
-            return { nombre, datos, estado: 'ok', intentos, registros: datos.length, ultimaLecturaExitosa: this.reloj().toISOString() };
+            const fechaExitosa = this.reloj();
+            const incremental = nombre === 'redmine' && cursorAnterior !== null;
+            const snapshot = nombre === 'redmine'
+              ? this.almacen.combinarSnapshotFuente(nombre, datos, { incremental })
+              : this.almacen.guardarSnapshotFuente(nombre, datos, fechaExitosa);
+            return {
+              nombre,
+              datos: snapshot,
+              estado: 'ok',
+              intentos,
+              registros: snapshot.length,
+              ultimaLecturaExitosa: fechaExitosa.toISOString(),
+              ...(nombre === 'redmine' ? { fechaExitosa, cursorCandidato: cursorCandidatoRedmine } : {}),
+            };
           } catch (error) {
             const respaldo = this.almacen.ultimosDatosFuente(nombre);
             const fallo = { fuente: nombre, fecha: this.reloj().toISOString(), intentos: error.intentos, mensaje: error.message };
@@ -94,6 +116,15 @@ export class Sincronizacion {
         alertas,
         estadoSincronizacion,
       });
+      const lecturaRedmine = lecturas.find((lectura) => lectura.nombre === 'redmine' && lectura.estado === 'ok');
+      if (lecturaRedmine) {
+        this.almacen.confirmarSnapshotFuente(
+          'redmine',
+          lecturaRedmine.datos,
+          lecturaRedmine.fechaExitosa,
+          lecturaRedmine.cursorCandidato,
+        );
+      }
       return estadoSincronizacion;
     } finally {
       this.enEjecucion = false;
