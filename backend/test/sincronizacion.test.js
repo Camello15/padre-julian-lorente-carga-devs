@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 import { Conector } from '../src/conectores/Conector.js';
 import { crearConectores } from '../src/conectores/index.js';
@@ -7,6 +8,15 @@ import { extraerCodigo, unificar } from '../src/sincronizacion/normalizador.js';
 import { Sincronizacion } from '../src/sincronizacion/Sincronizacion.js';
 
 const desarrolladores = [{ id: 'd01', nombre: 'Persona Uno', idRedmine: 11, usuarioGitlab: 'puno', usuarioGlpi: 'puno' }];
+const ejecutarScriptAislado = (script) => {
+  const env = { ...process.env, USAR_MOCKS: 'false', ROCKETCHAT_URL: 'https://rocket.example.test', ROCKETCHAT_USER_ID: 'user-id', ROCKETCHAT_TOKEN: 'token' };
+  delete env.NODE_TEST_CONTEXT;
+  return spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: new URL('..', import.meta.url),
+    encoding: 'utf8',
+    env,
+  });
+};
 const issue = (codigo, etapa = 'Desarrollo') => ({
   id: 1, subject: 'Prueba', tracker: { name: 'Incidente' }, status: { is_closed: false },
   assigned_to: { id: 11 }, project: { identifier: 'soporte', name: 'Soporte' },
@@ -264,10 +274,243 @@ describe('Sincronización (RNF-01)', () => {
     assert.equal(estadoFallido.estado, 'parcial');
     assert.equal(almacen.cursorFuente('gitlab'), cursorAnterior);
     assert.deepEqual(almacen.ultimosDatosFuente('gitlab').datos, snapshotAnterior);
+    assert.equal(almacen.cursorFuente('redmine'), '2026-11-22T10:10:00.000Z');
 
     ahora = new Date('2026-11-22T10:20:00.000Z');
     await sync.ejecutar();
     assert.equal(almacen.cursorFuente('gitlab'), '2026-11-22T10:20:00.000Z');
     assert.equal(almacen.ultimosDatosFuente('gitlab').datos.length, 2);
+  });
+
+  it('combina deltas Rocket.Chat por rid y _id manteniendo el contrato público', async () => {
+    let ahora = new Date('2026-11-22T10:00:00.000Z');
+    const almacen = new AlmacenMemoria();
+    const identidades = new WeakMap();
+    const respuestas = [
+      { datos: [{ canal: 'general', texto: 'inicial', fecha: '2026-11-22T09:59:00.000Z' }], meta: [{ rid: 'r1', id: 'm1' }] },
+      { datos: [
+        { canal: 'general', texto: 'editado', fecha: '2026-11-22T09:59:00.000Z' },
+        { canal: 'general', texto: 'nuevo', fecha: '2026-11-22T10:09:00.000Z' },
+      ], meta: [{ rid: 'r1', id: 'm1' }, { rid: 'r1', id: 'm2' }] },
+    ];
+    const ejecucionesPersistidas = [];
+    const persistencia = {
+      async crearSincronizacion() { return ejecucionesPersistidas.length + 1; },
+      async finalizarSincronizacion(resultado) { ejecucionesPersistidas.push(resultado); },
+    };
+    const rocket = {
+      fuente: { nombre: 'rocketchat' },
+      desdes: [],
+      async leerDatos(desde) {
+        this.desdes.push(desde);
+        const respuesta = respuestas.shift();
+        respuesta.datos.forEach((mensaje, indice) => identidades.set(mensaje, respuesta.meta[indice]));
+        return respuesta.datos;
+      },
+      exportarMetadatos(datos) { return datos.map((mensaje) => identidades.get(mensaje) ?? null); },
+      identidadMensaje(mensaje) {
+        const identidad = identidades.get(mensaje);
+        return identidad ? JSON.stringify([identidad.rid, identidad.id]) : null;
+      },
+    };
+    const sync = new Sincronizacion({ conectores: [rocket], almacen, desarrolladores, umbral: { maxPeticiones: 0 }, reintentos: 3, esperaReintentoMs: 0, reloj: () => new Date(ahora), persistencia });
+
+    await sync.ejecutar();
+    ahora = new Date('2026-11-22T10:10:00.000Z');
+    await sync.ejecutar();
+
+    assert.equal(rocket.desdes[0], null);
+    assert.equal(rocket.desdes[1].toISOString(), '2026-11-22T09:55:00.000Z');
+    const snapshot = almacen.ultimosDatosFuente('rocketchat').datos;
+    assert.equal(snapshot.length, 2);
+    assert.equal(snapshot.find((item) => item.fecha === '2026-11-22T09:59:00.000Z').texto, 'editado');
+    assert.deepEqual(Object.keys(snapshot[0]).sort(), ['canal', 'fecha', 'texto']);
+    assert.deepEqual(ejecucionesPersistidas[0].snapshots[0].metadatos, [{ rid: 'r1', id: 'm1' }]);
+    assert.deepEqual(ejecucionesPersistidas[1].snapshots[0].metadatos, [
+      { rid: 'r1', id: 'm1' }, { rid: 'r1', id: 'm2' },
+    ]);
+  });
+
+  it('si falla la transacción PostgreSQL conserva el resultado, snapshot y cursor anteriores', async () => {
+    let ahora = new Date('2026-11-22T10:00:00.000Z');
+    const almacen = new AlmacenMemoria();
+    let fallaPersistencia = false;
+    const persistencia = {
+      async crearSincronizacion() { return 41; },
+      async finalizarSincronizacion() {
+        if (fallaPersistencia) throw new Error('fallo de transacción');
+      },
+    };
+    const redmine = new ConectorFalso('redmine', [
+      [issue('INC-2026-031')],
+      [{ ...issue('INC-2026-032'), id: 2 }],
+    ]);
+    const sync = new Sincronizacion({ conectores: [redmine], almacen, desarrolladores, umbral: { maxPeticiones: 0 }, reintentos: 3, esperaReintentoMs: 0, reloj: () => new Date(ahora), persistencia });
+    await sync.ejecutar();
+    const snapshotAnterior = almacen.ultimosDatosFuente('redmine').datos;
+    const cursorAnterior = almacen.cursorFuente('redmine');
+    const resultadoAnterior = almacen.peticiones;
+    ahora = new Date('2026-11-22T10:10:00.000Z');
+    fallaPersistencia = true;
+
+    await assert.rejects(sync.ejecutar(), /fallo de transacción/);
+
+    assert.deepEqual(almacen.ultimosDatosFuente('redmine').datos, snapshotAnterior);
+    assert.equal(almacen.cursorFuente('redmine'), cursorAnterior);
+    assert.equal(almacen.peticiones, resultadoAnterior);
+    assert.equal(sync.enEjecucion, false);
+  });
+
+  it('no sobrescribe snapshots persistidos en modo mock y conserva la caché simulada', async () => {
+    const almacen = new AlmacenMemoria();
+    const snapshotReal = [{ id: 99, subject: 'Snapshot real' }];
+    almacen.rehidratarSnapshotFuente('redmine', snapshotReal, '2026-11-22T09:00:00.000Z', '2026-11-22T08:55:00.000Z');
+    let snapshotsRecibidos;
+    const persistido = { redmine: snapshotReal };
+    const persistencia = {
+      async crearSincronizacion() { return 52; },
+      async finalizarSincronizacion(resultado) {
+        snapshotsRecibidos = resultado.snapshots;
+        for (const snapshot of resultado.snapshots) persistido[snapshot.nombre] = snapshot.datos;
+      },
+    };
+    const redmine = new ConectorFalso('redmine', [[issue('INC-2026-031')]]);
+    const sync = new Sincronizacion({ conectores: [redmine], almacen, desarrolladores, umbral: { maxPeticiones: 0 }, reintentos: 3, esperaReintentoMs: 0, persistencia, modoMocks: true });
+
+    const estado = await sync.ejecutar();
+
+    assert.equal(estado.estado, 'ok');
+    assert.deepEqual(snapshotsRecibidos, []);
+    assert.equal(persistido.redmine, snapshotReal);
+    assert.equal(almacen.ultimosDatosFuente('redmine').datos[0].subject, 'Prueba');
+    assert.equal(almacen.cursorFuente('redmine'), null);
+  });
+
+  it('rechaza un snapshot Rocket.Chat anterior sin identidad incluso si el delta está vacío', async () => {
+    const almacen = new AlmacenMemoria();
+    const datosAnteriores = [{ canal: 'general', texto: 'mensaje', fecha: '2026-11-22T09:00:00.000Z' }];
+    almacen.rehidratarSnapshotFuente('rocketchat', datosAnteriores, '2026-11-22T09:00:00.000Z', '2026-11-22T09:00:00.000Z');
+    const rocket = {
+      fuente: { nombre: 'rocketchat' },
+      async leerDatos() { return []; },
+      exportarMetadatos(datos) { return datos.map(() => null); },
+    };
+    const sync = crear([rocket], almacen);
+
+    const estado = await sync.ejecutar();
+
+    assert.equal(estado.estado, 'fallida');
+    assert.equal(estado.fallos[0].fuente, 'rocketchat');
+    assert.deepEqual(almacen.ultimosDatosFuente('rocketchat').datos, datosAnteriores);
+    assert.equal(almacen.cursorFuente('rocketchat'), '2026-11-22T09:00:00.000Z');
+  });
+
+  it('valida identidades Rocket.Chat también durante una lectura completa', async () => {
+    const almacen = new AlmacenMemoria();
+    const rocket = {
+      fuente: { nombre: 'rocketchat' },
+      async leerDatos() { return [{ canal: 'general', texto: 'sin identidad', fecha: '2026-11-22T09:00:00.000Z' }]; },
+      exportarMetadatos(datos) { return datos.map(() => null); },
+    };
+    const estado = await crear([rocket], almacen).ejecutar();
+
+    assert.equal(estado.estado, 'fallida');
+    assert.equal(estado.fallos[0].fuente, 'rocketchat');
+    assert.equal(almacen.cursorFuente('rocketchat'), null);
+    assert.deepEqual(almacen.ultimosDatosFuente('rocketchat'), null);
+  });
+
+  it('rechaza snapshot Rocket.Chat previo inválido durante lectura completa y lo conserva', async () => {
+    const almacen = new AlmacenMemoria();
+    const snapshotAnterior = [{ canal: 'general', texto: 'anterior', fecha: '2026-11-22T09:00:00.000Z' }];
+    const delta = [{ canal: 'general', texto: 'nuevo', fecha: '2026-11-22T10:00:00.000Z' }];
+    almacen.rehidratarSnapshotFuente('rocketchat', snapshotAnterior, '2026-11-22T09:00:00.000Z', null);
+    const rocket = {
+      fuente: { nombre: 'rocketchat' },
+      async leerDatos() { return delta; },
+      exportarMetadatos(mensajes) {
+        return mensajes.map((mensaje) => (mensaje === delta[0] ? { rid: 'room-1', id: 'message-2' } : null));
+      },
+    };
+
+    const estado = await crear([rocket], almacen).ejecutar();
+
+    assert.equal(estado.estado, 'fallida');
+    assert.equal(estado.fallos[0].fuente, 'rocketchat');
+    assert.match(estado.fallos[0].mensaje, /snapshot anterior/);
+    assert.equal(almacen.ultimosDatosFuente('rocketchat').datos, snapshotAnterior);
+    assert.equal(almacen.cursorFuente('rocketchat'), null);
+  });
+
+  it('confirma PostgreSQL antes de enviar alertas', () => {
+    const script = `
+      import { Sincronizacion } from './src/sincronizacion/Sincronizacion.js';
+      import { AlmacenMemoria } from './src/datos/almacen.js';
+      const orden = [];
+      globalThis.fetch = async () => { orden.push('alerta'); return { ok: true }; };
+      const conector = {
+        fuente: { nombre: 'redmine' },
+        async leerDatos() { return [{ id: 1, subject: 'Trabajo', tracker: { name: 'Incidente' }, status: { is_closed: false }, assigned_to: { id: 11 }, project: { identifier: 'soporte', name: 'Soporte' }, custom_fields: [{ name: 'Código', value: 'INC-2026-031' }, { name: 'Etapa', value: 'Desarrollo' }] }]; },
+      };
+      const persistencia = { async crearSincronizacion() { return 1; }, async finalizarSincronizacion() { orden.push('persistencia'); } };
+      const almacen = new AlmacenMemoria();
+      const sync = new Sincronizacion({ conectores: [conector], almacen, desarrolladores: [{ id: 'd01', nombre: 'Persona Uno', idRedmine: 11 }], umbral: { maxPeticiones: 0 }, persistencia });
+      await sync.ejecutar();
+      console.log(JSON.stringify({ orden, estado: almacen.estadoSincronizacion.estado, enviada: almacen.alertas[0]?.enviadaRocketChat }));
+    `;
+    const resultado = ejecutarScriptAislado(script);
+
+    assert.equal(resultado.status, 0, resultado.stderr);
+    assert.notEqual(resultado.stdout.trim(), '', JSON.stringify({ stderr: resultado.stderr, error: resultado.error }));
+    const salida = JSON.parse(resultado.stdout.trim().split('\n').at(-1));
+    assert.deepEqual(salida.orden, ['persistencia', 'alerta']);
+    assert.equal(salida.estado, 'ok');
+    assert.equal(salida.enviada, true);
+  });
+
+  it('no envía alertas si falla la persistencia PostgreSQL', () => {
+    const script = `
+      import { Sincronizacion } from './src/sincronizacion/Sincronizacion.js';
+      import { AlmacenMemoria } from './src/datos/almacen.js';
+      const orden = [];
+      globalThis.fetch = async () => { orden.push('alerta'); return { ok: true }; };
+      const conector = {
+        fuente: { nombre: 'redmine' },
+        async leerDatos() { return [{ id: 1, subject: 'Trabajo', tracker: { name: 'Incidente' }, status: { is_closed: false }, assigned_to: { id: 11 }, project: { identifier: 'soporte', name: 'Soporte' }, custom_fields: [{ name: 'Código', value: 'INC-2026-031' }, { name: 'Etapa', value: 'Desarrollo' }] }]; },
+      };
+      const persistencia = { async crearSincronizacion() { return 1; }, async finalizarSincronizacion() { orden.push('persistencia'); throw new Error('fallo SQL'); } };
+      const sync = new Sincronizacion({ conectores: [conector], almacen: new AlmacenMemoria(), desarrolladores: [{ id: 'd01', nombre: 'Persona Uno', idRedmine: 11 }], umbral: { maxPeticiones: 0 }, persistencia });
+      try { await sync.ejecutar(); } catch {}
+      console.log(JSON.stringify({ orden }));
+    `;
+    const resultado = ejecutarScriptAislado(script);
+
+    assert.equal(resultado.status, 0, resultado.stderr);
+    assert.notEqual(resultado.stdout.trim(), '', JSON.stringify({ stderr: resultado.stderr, error: resultado.error }));
+    assert.deepEqual(JSON.parse(resultado.stdout.trim().split('\n').at(-1)).orden, ['persistencia']);
+  });
+
+  it('un error de envío de alerta no altera el estado confirmado de sincronización', () => {
+    const script = `
+      import { Sincronizacion } from './src/sincronizacion/Sincronizacion.js';
+      import { AlmacenMemoria } from './src/datos/almacen.js';
+      globalThis.fetch = async () => { throw new Error('Rocket.Chat no disponible'); };
+      const conector = {
+        fuente: { nombre: 'redmine' },
+        async leerDatos() { return [{ id: 1, subject: 'Trabajo', tracker: { name: 'Incidente' }, status: { is_closed: false }, assigned_to: { id: 11 }, project: { identifier: 'soporte', name: 'Soporte' }, custom_fields: [{ name: 'Código', value: 'INC-2026-031' }, { name: 'Etapa', value: 'Desarrollo' }] }]; },
+      };
+      const persistencia = { async crearSincronizacion() { return 1; }, async finalizarSincronizacion() {} };
+      const almacen = new AlmacenMemoria();
+      const estado = await new Sincronizacion({ conectores: [conector], almacen, desarrolladores: [{ id: 'd01', nombre: 'Persona Uno', idRedmine: 11 }], umbral: { maxPeticiones: 0 }, persistencia }).ejecutar();
+      console.log(JSON.stringify({ estado: estado.estado, estadoGuardado: almacen.estadoSincronizacion.estado, enviada: almacen.alertas[0]?.enviadaRocketChat }));
+    `;
+    const resultado = ejecutarScriptAislado(script);
+
+    assert.equal(resultado.status, 0, resultado.stderr);
+    assert.notEqual(resultado.stdout.trim(), '', JSON.stringify({ stderr: resultado.stderr, error: resultado.error }));
+    const salida = JSON.parse(resultado.stdout.trim().split('\n').at(-1));
+    assert.equal(salida.estado, 'ok');
+    assert.equal(salida.estadoGuardado, 'ok');
+    assert.equal(salida.enviada, false);
   });
 });

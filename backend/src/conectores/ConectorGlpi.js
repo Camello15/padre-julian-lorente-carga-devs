@@ -6,7 +6,7 @@ const RANGO_INICIAL = 1;
 
 /** Lee los incidentes asignados desde la mesa de ayuda GLPI (RF-04). */
 export class ConectorGlpi extends Conector {
-  async leerDatos(_desde) {
+  async leerDatos(desde) {
     if (config.usarMocks) {
       const { tickets } = await this.leerMock('glpi.json');
       return tickets;
@@ -40,7 +40,9 @@ export class ConectorGlpi extends Conector {
     let errorLectura;
     let lecturaFallida = false;
     try {
-      datos = await this.#leerTickets(base, encabezadosSesion);
+      datos = desde
+        ? await this.#leerTicketsModificados(base, encabezadosSesion, desde)
+        : await this.#leerTickets(base, encabezadosSesion);
     } catch (error) {
       lecturaFallida = true;
       errorLectura = error;
@@ -118,6 +120,67 @@ export class ConectorGlpi extends Conector {
           // GLPI entrega las asignaciones como relaciones; no se deduce un username a partir de un ID.
           tecnico_asignado: null,
         });
+      }
+
+      totalEsperado = rango.total;
+      limite = maximoAceptado;
+      inicio = rango.fin + 1;
+    }
+    return tickets;
+  }
+
+  async #leerTicketsModificados(base, encabezados, desde) {
+    const opciones = await this.#getJson(`${base}/listSearchOptions/Ticket`, encabezados);
+    if (!opciones || typeof opciones !== 'object' || Array.isArray(opciones)) {
+      throw new Error('Respuesta JSON inválida de GLPI: opciones de búsqueda de Ticket');
+    }
+    const opcionFecha = Object.entries(opciones).find(([, opcion]) => opcion?.field === 'date_mod');
+    if (!opcionFecha) throw new Error('GLPI no expone una opción de búsqueda date_mod para Ticket');
+    const idCampoFecha = opcionFecha[0];
+    const fecha = desde instanceof Date ? desde : new Date(desde);
+    if (Number.isNaN(fecha.getTime())) throw new Error('Fecha incremental inválida para GLPI');
+    const valorFecha = fecha.toISOString().replace('T', ' ').replace('Z', '');
+    const tickets = [];
+    let inicio = 0;
+    let totalEsperado;
+    let limite = RANGO_INICIAL;
+
+    while (totalEsperado === undefined || inicio < totalEsperado) {
+      const finSolicitado = inicio + limite - 1;
+      const url = new URL(`${base}/search/Ticket`);
+      url.searchParams.set('range', `${inicio}-${finSolicitado}`);
+      url.searchParams.set('forcedisplay[0]', '1');
+      url.searchParams.set('forcedisplay[1]', '2');
+      url.searchParams.set('criteria[0][field]', idCampoFecha);
+      url.searchParams.set('criteria[0][searchtype]', 'morethan');
+      url.searchParams.set('criteria[0][value]', valorFecha);
+
+      const respuesta = await this.#get(`${url}`, encabezados);
+      const pagina = await this.#parseJson(respuesta);
+      if (!pagina || typeof pagina !== 'object' || Array.isArray(pagina) || !pagina.data || typeof pagina.data !== 'object') {
+        throw new Error('Respuesta JSON inválida de GLPI: se esperaba data de búsqueda');
+      }
+      const maximoAceptado = this.#leerLimite(respuesta.headers.get('Accept-Range'));
+      const rango = this.#leerRango(respuesta.headers.get('Content-Range'));
+      if (rango.inicio !== inicio || (totalEsperado !== undefined && rango.total !== totalEsperado)) {
+        throw new Error('Respuesta de GLPI con Content-Range inesperado');
+      }
+      const filas = Object.values(pagina.data);
+      if (rango.total === 0) {
+        if (inicio !== 0 || filas.length !== 0) throw new Error('Respuesta JSON inválida de GLPI: rango vacío inconsistente');
+        return tickets;
+      }
+      const cantidadRango = rango.fin - rango.inicio + 1;
+      if (cantidadRango < 1 || cantidadRango > limite || filas.length !== cantidadRango) {
+        throw new Error('Respuesta JSON inválida de GLPI: contenido incompatible con Content-Range');
+      }
+      if (maximoAceptado < 1) throw new Error('Respuesta de GLPI con Accept-Range inválido');
+
+      for (const fila of filas) {
+        if (!fila || typeof fila !== 'object' || fila['1'] === undefined || fila['1'] === null || typeof fila['2'] !== 'string') {
+          throw new Error('Respuesta JSON inválida de GLPI: resultado sin id o name');
+        }
+        tickets.push({ id: fila['1'], name: fila['2'], tecnico_asignado: null });
       }
 
       totalEsperado = rango.total;

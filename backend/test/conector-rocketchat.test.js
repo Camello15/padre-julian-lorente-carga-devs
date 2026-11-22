@@ -74,6 +74,71 @@ describe('ConectorRocketChat API', () => {
     assert.ok(llamadas.every(({ parsed }) => !parsed.href.includes('secret')));
   });
 
+  it('aplica oldest y exporta y rehidrata IDs como metadatos internos', async (t) => {
+    const llamadas = [];
+    t.mock.method(globalThis, 'fetch', async (url) => {
+      const parsed = new URL(url);
+      llamadas.push(parsed);
+      if (parsed.pathname.endsWith('/rooms.info')) return respuesta(sala('room-c-1', 'canal-publico', 'c'));
+      if (parsed.pathname.endsWith('/channels.history')) {
+        return respuesta(pagina([mensaje('room-c-1', 'msg-1')], 0, 1));
+      }
+      throw new Error(`Ruta inesperada: ${parsed.pathname}`);
+    });
+
+    const instancia = conector();
+    const desde = new Date('2026-11-22T09:55:00.000Z');
+    const mensajes = await instancia.leerDatos(desde);
+    const metadatos = instancia.exportarMetadatos(mensajes);
+    const historial = llamadas.find((url) => url.pathname.endsWith('/channels.history'));
+
+    assert.equal(historial.searchParams.get('oldest'), desde.toISOString());
+    assert.equal(historial.searchParams.get('inclusive'), 'true');
+    assert.deepEqual(mensajes, [{ canal: 'canal-publico', texto: 'texto msg-1', fecha: '2026-11-22T10:00:00.000Z' }]);
+    assert.deepEqual(Object.keys(mensajes[0]).sort(), ['canal', 'fecha', 'texto']);
+    assert.deepEqual(metadatos, [{ rid: 'room-c-1', id: 'msg-1' }]);
+
+    const recargados = mensajes.map((item) => ({ ...item }));
+    const instanciaRehidratada = conector();
+    instanciaRehidratada.rehidratarMetadatos(recargados, metadatos);
+    assert.equal(instanciaRehidratada.identidadMensaje(recargados[0]), JSON.stringify(['room-c-1', 'msg-1']));
+  });
+
+  it('rechaza exportar mensajes que no tienen una identidad interna asociada', () => {
+    const instancia = conector();
+    assert.throws(
+      () => instancia.exportarMetadatos([{ canal: 'canal-publico', texto: 'texto', fecha: '2026-11-22T10:00:00.000Z' }]),
+      /sin identidad interna válida/,
+    );
+  });
+
+  it('rehidrata solo metadatos completos, válidos y alineados con los mensajes', () => {
+    const instancia = conector();
+    const mensajes = [{ canal: 'canal-publico', texto: 'texto', fecha: '2026-11-22T10:00:00.000Z' }];
+
+    assert.throws(() => instancia.rehidratarMetadatos(mensajes, [null]), /Identidad.*inválida/);
+    assert.throws(() => instancia.rehidratarMetadatos(mensajes, [{ rid: 'room-1' }]), /Identidad.*inválida/);
+    assert.throws(() => instancia.rehidratarMetadatos(mensajes, [{ rid: ' ', id: 'msg-1' }]), /Identidad.*inválida/);
+    assert.throws(() => instancia.rehidratarMetadatos(mensajes, []), /Metadatos.*inválidos/);
+  });
+
+  it('rechaza un mensaje de API sin rid o _id', async (t) => {
+    for (const parcial of [
+      { _id: 'msg-1', msg: 'texto', ts: '2026-11-22T10:00:00.000Z' },
+      { rid: 'room-c-1', msg: 'texto', ts: '2026-11-22T10:00:00.000Z' },
+    ]) {
+      t.mock.restoreAll();
+      t.mock.method(globalThis, 'fetch', async (url) => {
+        const parsed = new URL(url);
+        if (parsed.pathname.endsWith('/rooms.info')) return respuesta(sala('room-c-1', 'canal-publico', 'c'));
+        if (parsed.pathname.endsWith('/channels.history')) return respuesta(pagina([parcial], 0, 1));
+        throw new Error(`Ruta inesperada: ${parsed.pathname}`);
+      });
+
+      await assert.rejects(conector().leerDatos(), /mensaje incompleto/);
+    }
+  });
+
   it('resuelve grupos privados y usa groups.history', async (t) => {
     const endpoints = [];
     const canalesOriginales = config.fuentes.rocketchat.canalesLectura;
@@ -101,6 +166,7 @@ describe('ConectorRocketChat API', () => {
 
   it('usa total para paginar completamente cuando es múltiplo exacto de count y deduplica mensajes', async (t) => {
     const offsets = [];
+    const limitesSuperiores = [];
     const primera = Array.from({ length: 50 }, (_, i) => mensaje('room-c-1', `m-${i}`));
     const segunda = [mensaje('room-c-1', 'm-0'), ...Array.from({ length: 49 }, (_, i) => mensaje('room-c-1', `m-${i + 50}`))];
     let historial = 0;
@@ -112,6 +178,7 @@ describe('ConectorRocketChat API', () => {
       if (parsed.pathname.endsWith('/channels.history')) {
         historial += 1;
         offsets.push(parsed.searchParams.get('offset'));
+        limitesSuperiores.push(parsed.searchParams.get('latest'));
         return historial === 1 ? respuesta(pagina(primera, 0, 100)) : respuesta(pagina(segunda, 50, 100));
       }
       throw new Error(`Ruta inesperada: ${parsed.pathname}`);
@@ -120,6 +187,7 @@ describe('ConectorRocketChat API', () => {
     const mensajes = await conector().leerDatos();
 
     assert.deepEqual(offsets, ['0', '50']);
+    assert.equal(limitesSuperiores[0], limitesSuperiores[1]);
     assert.equal(mensajes.length, 99);
     assert.equal(mensajes.filter((item) => item.texto === 'texto m-0').length, 1);
   });

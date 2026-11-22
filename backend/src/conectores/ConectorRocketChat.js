@@ -5,7 +5,13 @@ const CANTIDAD_POR_PAGINA = 50;
 
 /** Lee notificaciones relevantes de los canales de Rocket Chat (RF-05). */
 export class ConectorRocketChat extends Conector {
-  async leerDatos(_desde) {
+  constructor(fuente) {
+    super(fuente);
+    this.identidadesMensajes = new WeakMap();
+    this.modoMock = config.usarMocks;
+  }
+
+  async leerDatos(desde) {
     if (config.usarMocks) {
       const { mensajes } = await this.leerMock('rocketchat.json');
       return mensajes;
@@ -31,19 +37,58 @@ export class ConectorRocketChat extends Conector {
       if (salasLeidas.has(sala.id)) continue;
       salasLeidas.add(sala.id);
 
-      const historial = await this.#leerHistorial(base, sala, encabezados);
+      const historial = await this.#leerHistorial(base, sala, encabezados, desde);
       for (const mensaje of historial) {
         const clave = JSON.stringify([mensaje.rid, mensaje._id]);
         if (mensajesPorClave.has(clave)) continue;
-        mensajesPorClave.set(clave, {
+        const adaptado = {
           canal: sala.nombre,
           texto: mensaje.msg,
           fecha: mensaje.ts,
-        });
+        };
+        this.identidadesMensajes.set(adaptado, { rid: mensaje.rid, id: mensaje._id });
+        mensajesPorClave.set(clave, adaptado);
       }
     }
 
     return [...mensajesPorClave.values()];
+  }
+
+  identidadMensaje(mensaje) {
+    const identidad = this.identidadesMensajes.get(mensaje);
+    if (!identidad || !this.#identidadValida(identidad)) {
+      throw new Error('Mensaje de Rocket.Chat sin identidad interna válida');
+    }
+    return JSON.stringify([identidad.rid, identidad.id]);
+  }
+
+  exportarMetadatos(mensajes) {
+    if (!Array.isArray(mensajes)) throw new Error('Mensajes de Rocket.Chat inválidos para exportar metadatos');
+    return mensajes.map((mensaje) => {
+      const identidad = this.identidadesMensajes.get(mensaje);
+      if (!identidad || !this.#identidadValida(identidad)) {
+        throw new Error('Mensaje de Rocket.Chat sin identidad interna válida');
+      }
+      return { rid: identidad.rid, id: identidad.id };
+    });
+  }
+
+  rehidratarMetadatos(mensajes, metadatos) {
+    if (!Array.isArray(mensajes) || !Array.isArray(metadatos) || metadatos.length !== mensajes.length) {
+      throw new Error('Metadatos de snapshot Rocket.Chat inválidos');
+    }
+    mensajes.forEach((mensaje, indice) => {
+      const identidad = metadatos[indice];
+      if (!identidad || !this.#identidadValida(identidad)) {
+        throw new Error('Identidad de mensaje Rocket.Chat inválida en snapshot');
+      }
+      this.identidadesMensajes.set(mensaje, { rid: identidad.rid, id: identidad.id });
+    });
+  }
+
+  #identidadValida(identidad) {
+    return typeof identidad?.rid === 'string' && identidad.rid.trim() !== ''
+      && typeof identidad?.id === 'string' && identidad.id.trim() !== '';
   }
 
   #apiBase(urlConfigurada) {
@@ -75,16 +120,23 @@ export class ConectorRocketChat extends Conector {
     return { id, nombre: name, tipo };
   }
 
-  async #leerHistorial(base, sala, encabezados) {
+  async #leerHistorial(base, sala, encabezados, desde) {
     const endpoint = sala.tipo === 'c' ? 'channels.history' : 'groups.history';
     const mensajes = [];
     let offset = 0;
+    const limiteSuperior = new Date().toISOString();
 
     while (true) {
       const url = new URL(`${base}/${endpoint}`);
       url.searchParams.set('roomId', sala.id);
       url.searchParams.set('count', String(CANTIDAD_POR_PAGINA));
       url.searchParams.set('offset', String(offset));
+      url.searchParams.set('latest', limiteSuperior);
+      if (desde) {
+        const limiteTemporal = desde instanceof Date ? desde.toISOString() : new Date(desde).toISOString();
+        url.searchParams.set('oldest', limiteTemporal);
+        url.searchParams.set('inclusive', 'true');
+      }
       const respuesta = await this.#getJson(url, encabezados, 'historial');
       if (respuesta?.success === false) throw this.#errorApi(400, respuesta, 'historial');
       if (!respuesta || respuesta.success !== true || !Array.isArray(respuesta.messages)) {
@@ -111,6 +163,9 @@ export class ConectorRocketChat extends Conector {
           || typeof mensaje.ts !== 'string' || Number.isNaN(Date.parse(mensaje.ts))
         ) {
           throw new Error('Respuesta JSON inválida de Rocket.Chat: mensaje incompleto');
+        }
+        if (!this.#identidadValida({ rid: mensaje.rid, id: mensaje._id })) {
+          throw new Error('Respuesta JSON inválida de Rocket.Chat: mensaje sin identidad válida');
         }
         mensajes.push(mensaje);
       }

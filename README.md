@@ -70,7 +70,15 @@ cp .env.example .env      # define POSTGRES_PASSWORD
 docker compose up --build
 ```
 
-Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql`. Por ahora el backend guarda los datos en memoria; la conexión a PostgreSQL es el siguiente paso del módulo Datos y alertas.
+Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql`; el backend conserva el almacén en memoria como caché y, cuando `DATABASE_URL` está configurada, PostgreSQL es obligatorio para persistir ejecuciones, fallos, snapshots y cursores.
+
+Si el volumen de PostgreSQL ya estaba inicializado antes de añadir `snapshot_fuente`, aplica la migración antes de iniciar el backend:
+
+```bash
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < database/migrations/001-snapshot-fuente.sql
+```
+
+La migración no elimina ni recrea tablas existentes. En una base nueva, `database/schema.sql` crea la tabla automáticamente.
 
 ## API
 

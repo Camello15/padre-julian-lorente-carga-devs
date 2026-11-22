@@ -79,6 +79,35 @@ describe('ConectorGlpi API', () => {
     assert.equal(rutas[1].parsed.searchParams.get('range'), '0-0');
   });
 
+  it('lee incrementalmente por date_mod conservando el contrato GLPI', async (t) => {
+    const llamadas = [];
+    t.mock.method(globalThis, 'fetch', async (url) => {
+      const parsed = new URL(url);
+      llamadas.push(parsed);
+      if (parsed.pathname.endsWith('/initSession')) return respuestaSesion();
+      if (parsed.pathname.endsWith('/listSearchOptions/Ticket')) {
+        return respuesta({ common: 'Características', '17': { field: 'date_mod', name: 'Última actualización' } });
+      }
+      if (parsed.pathname.endsWith('/search/Ticket')) {
+        return respuesta({ totalcount: 1, count: 1, data: { '23': { '1': 23, '2': '[INC-2026-031] Actualizada' } } }, 200, {
+          'Content-Range': '0-0/1', 'Accept-Range': 'Ticket 50',
+        });
+      }
+      return respuestaCierre();
+    });
+
+    const tickets = await conector().leerDatos(new Date('2026-11-22T10:00:00.000Z'));
+
+    assert.deepEqual(tickets, [{ id: 23, name: '[INC-2026-031] Actualizada', tecnico_asignado: null }]);
+    const busqueda = llamadas.find((url) => url.pathname.endsWith('/search/Ticket'));
+    assert.equal(busqueda.searchParams.get('criteria[0][field]'), '17');
+    assert.equal(busqueda.searchParams.get('criteria[0][searchtype]'), 'morethan');
+    assert.equal(busqueda.searchParams.get('criteria[0][value]'), '2026-11-22 10:00:00.000');
+    assert.equal(busqueda.searchParams.get('forcedisplay[0]'), '1');
+    assert.equal(busqueda.searchParams.get('forcedisplay[1]'), '2');
+    assert.equal(llamadas.at(-1).pathname, '/apirest.php/killSession');
+  });
+
   it('pagina usando los rangos y el límite indicados por los encabezados GLPI', async (t) => {
     const rangos = [];
     let ticketPage = 0;

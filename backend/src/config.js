@@ -16,6 +16,7 @@ const texto = (valor, porDefecto = '') => (valor && valor.trim() !== '' ? valor.
 
 /** Configuración central. Las credenciales solo se leen del entorno (RNF-02). */
 export const config = Object.freeze({
+  databaseUrl: texto(process.env.DATABASE_URL),
   puerto: entero(process.env.PORT, 3000),
   origenFrontend: texto(process.env.FRONTEND_URL, 'http://localhost:5173'),
   usarMocks: texto(process.env.USAR_MOCKS, 'true') !== 'false',

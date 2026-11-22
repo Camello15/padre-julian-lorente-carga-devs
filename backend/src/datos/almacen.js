@@ -54,6 +54,10 @@ export class AlmacenMemoria {
     this.ultimosDatosPorFuente.set(nombreFuente, { datos, fecha: fechaIso, cursor: cursorIso });
   }
 
+  rehidratarSnapshotFuente(nombreFuente, datos, fecha, cursor) {
+    this.ultimosDatosPorFuente.set(nombreFuente, { datos, fecha, cursor });
+  }
+
   cursorFuente(nombreFuente) {
     return this.ultimosDatosFuente(nombreFuente)?.cursor ?? null;
   }
