@@ -21,7 +21,7 @@ El área de TI de la cooperativa reparte su trabajo entre RedMine, GitLab, GLPI 
 ├── backend/             Node.js + Express: API, conectores y sincronización
 │   ├── src/conectores/      Conector (abstracta) y un conector por fuente
 │   ├── src/sincronizacion/  cron cada 15 min, 3 reintentos por fuente, cruce por código
-│   ├── src/datos/           avance por etapa, carga, umbral, filtros, alertas
+│   ├── src/datos/           avance por etapa, carga, umbral, filtros, alertas, almacén (memoria o PostgreSQL)
 │   ├── src/auth/            SSO simulado y roles (PMO, Técnico, Administrativo, Administrador TI)
 │   └── mocks/               datos de prueba de las cuatro fuentes
 ├── database/schema.sql  esquema PostgreSQL basado en el diagrama de clases
@@ -70,7 +70,35 @@ cp .env.example .env      # define POSTGRES_PASSWORD
 docker compose up --build
 ```
 
-Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql`. Por ahora el backend guarda los datos en memoria; la conexión a PostgreSQL es el siguiente paso del módulo Datos y alertas.
+Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql` y el backend guarda ahí los datos (ver [Persistencia](#persistencia)).
+
+> **¿Ya habías levantado Docker antes de esta versión?** `schema.sql` solo se ejecuta cuando se crea el volumen de la base, así que tu base tiene el esquema viejo. Bórrala una vez (se pierden los datos de prueba guardados) y vuelve a levantar:
+>
+> ```bash
+> docker compose down -v
+> docker compose up --build
+> ```
+
+## Persistencia
+
+| `DATABASE_URL` | Dónde se guardan los datos |
+|---|---|
+| vacía (por defecto en `npm run dev`) | En memoria (`AlmacenMemoria`). Se pierden al reiniciar. |
+| definida (Docker la define sola) | En PostgreSQL (`AlmacenPostgres`). |
+
+`AlmacenPostgres` mantiene la memoria como caché de lectura (las rutas no cambian) y guarda cada escritura en PostgreSQL en una transacción. Al arrancar recupera el umbral configurado por el Administrador TI, los últimos datos de cada fuente (RNF-01), las revisiones de registros no reconocidos y las alertas ya enviadas a Rocket Chat. El SSO y los conectores siguen en modo simulado hasta tener credenciales reales.
+
+Para usar PostgreSQL con `npm run dev`, levanta solo la base (`docker compose up -d postgres`) y en `.env` pon `DATABASE_URL=postgres://carga_devs:<POSTGRES_PASSWORD>@localhost:5432/carga_devs`.
+
+### Pruebas de integración con PostgreSQL
+
+`backend/test/almacen-postgres.test.js` se omite si no existe `TEST_DATABASE_URL`. Cada ejecución crea un schema temporal con `database/schema.sql` y lo borra al terminar. En el CI corren siempre contra un servicio de PostgreSQL.
+
+```bash
+docker run -d --rm --name pg-pruebas -e POSTGRES_PASSWORD=prueba -p 55432:5432 postgres:17-alpine
+TEST_DATABASE_URL=postgres://postgres:prueba@localhost:55432/postgres npm test
+docker stop pg-pruebas
+```
 
 ## API
 

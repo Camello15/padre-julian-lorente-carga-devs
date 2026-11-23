@@ -64,16 +64,18 @@ En el diagrama de actividades cada acción lleva el **mismo nombre e ID** que su
 | `Fuente` | `fuente` | `nombre`, `urlApi` → `url_api`, `activa` |
 | `Conector` (abstracta) y `ConectorRedmine`, `ConectorGitlab`, `ConectorGlpi`, `ConectorRocketChat` | — (código) | `fuente` |
 | `Sincronizacion` | `sincronizacion` | `inicio`, `fin`, `estado` (`ok`, `parcial`, `fallida`) |
+| `AlmacenMemoria` / `AlmacenPostgres` | — (código, `backend/src/datos/`) | Guardan el resultado de cada Sincronización. `AlmacenPostgres` escribe en todas las tablas de esta lista |
 | `RegistroFallo` | `registro_fallo` | `fecha`, `intentos`, `mensaje` |
 | `Desarrollador` | `desarrollador` | `id`, `nombre`, `correo`, `usuarioGitlab` → `usuario_gitlab`, `idRedmine` → `id_redmine`, `usuarioGlpi` → `usuario_glpi` |
 | `Proyecto` | `proyecto` | `codigo`, `nombre` |
 | `ModuloCore` | `modulo_core` (+ `peticion_modulo`) | `id`, `nombre` |
 | `Peticion` | `peticion` | `codigo`, `titulo`, `tipo`, `etapa`, `estado` (`abierta`, `cerrada`), `fechaInicio` → `fecha_inicio`, `fechaFin` → `fecha_fin` |
+| Últimos datos de cada `Fuente` (`AlmacenMemoria.ultimosDatosFuente()`) | `lectura_fuente` | `datos` (JSON crudo de la Fuente), `fecha`. Sin clase de dominio: es el respaldo de RNF-01 |
 | `ActividadCodigo` | `actividad_codigo` | `tipo` (`commit`, `merge_request`, `pipeline`), `rama`, `idOrigen` → `id_origen`, `estado`, `fecha` |
 | `IndicadorCarga` | `indicador_carga` | `peticionesAbiertas` → `peticiones_abiertas`, `avancePromedio` → `avance_promedio`, `calculadoEn` → `calculado_en`, `porTipo` y `superaUmbral` (calculados, no se guardan) |
 | `Umbral` | `umbral` | `maxPeticiones` → `max_peticiones`, `vigenteDesde` → `vigente_desde`, `configuradoPor` → `configurado_por` |
-| `Alerta` | `alerta` | `mensaje`, `fecha`, `enviadaRocketChat` → `enviada_rocket_chat` |
-| `RegistroNoReconocido` | `registro_no_reconocido` | `codigoOriginal` → `codigo_original`, `motivo`, `revisado`, `peticionAsignada` → `peticion_asignada`, `detectadoEn` → `detectado_en` |
+| `Alerta` | `alerta` | `mensaje`, `peticionesAbiertas` → `peticiones_abiertas`, `umbral` → `umbral` (máximo vigente al generarla), `fecha`, `enviadaRocketChat` → `enviada_rocket_chat` |
+| `RegistroNoReconocido` | `registro_no_reconocido` | `id` → `clave` (`fuente:codigoOriginal[#n]`, estable entre sincronizaciones), `codigoOriginal` → `codigo_original`, `motivo`, `revisado`, `peticionAsignada` → `peticion_asignada`, `detectadoEn` → `detectado_en` |
 | `TipoTrabajo` («enumeration») | tipo `tipo_trabajo` | `POA`, `REC`, `INICIATIVA`, `INCIDENTE` |
 | `Etapa` («enumeration») | tipo `etapa` | `ANALISIS`, `DESARROLLO`, `CERTIFICACION`, `DESPLIEGUE`, `ESTABILIZACION` |
 
@@ -290,6 +292,7 @@ classDiagram
     class Alerta {
         -String mensaje
         -int peticionesAbiertas
+        -int umbral
         -DateTime fecha
         -bool enviadaRocketChat
         +enviar()
@@ -346,7 +349,7 @@ classDiagram
     IndicadorCarga "1" --> "0..*" Alerta : genera
 ```
 
-> En el prototipo, `Usuario`, `Rol` y `Sesion` son objetos simples (`auth/roles.js`, `auth/sso-mock.js`) y el almacenamiento es en memoria (`datos/almacen.js`). La correspondencia con las tablas está en la sección 6.0 y en `database/schema.sql`.
+> En el prototipo, `Usuario`, `Rol` y `Sesion` son objetos simples (`auth/roles.js`, `auth/sso-mock.js`). Los datos se guardan en PostgreSQL con `AlmacenPostgres` si hay `DATABASE_URL`, o en memoria con `AlmacenMemoria` si no. Las sesiones siguen en memoria. La correspondencia con las tablas está en la sección 6.0 y en `database/schema.sql`.
 
 ## 6.4 Diagramas de secuencia
 
@@ -359,7 +362,7 @@ sequenceDiagram
     participant A as API (backend/rutas)
     participant S as ServicioSesiones (SSO)
     participant R as Rol
-    participant AL as AlmacenMemoria
+    participant AL as Almacén (AlmacenMemoria / AlmacenPostgres)
     U->>W: Elegir rol e ingresar
     W->>A: POST /api/auth/login {rol}
     A->>S: iniciarSesionMock(rol)
@@ -393,7 +396,7 @@ sequenceDiagram
     participant CA as calcularCarga (CU-08)
     participant AL as alertas (CU-09)
     participant RC as Rocket Chat
-    participant M as AlmacenMemoria
+    participant M as Almacén (AlmacenMemoria / AlmacenPostgres)
     P->>SY: ejecutar() cada 15 min
     par por cada Fuente
         SY->>C: leerConReintentos(desde) hasta 3 intentos
@@ -453,6 +456,7 @@ erDiagram
     usuario |o--o{ umbral : "configura"
     sincronizacion ||--o{ registro_fallo : "registra"
     fuente ||--o{ registro_fallo : "de"
+    fuente ||--o| lectura_fuente : "guarda últimos datos"
     sincronizacion |o--o{ registro_no_reconocido : "detecta"
     fuente ||--o{ registro_no_reconocido : "proviene de"
     peticion |o--o{ registro_no_reconocido : "se asigna a"
@@ -496,6 +500,9 @@ erDiagram
         timestamptz inicio
         timestamptz fin
         varchar estado }
+    lectura_fuente { smallint fuente_id PK,FK
+        jsonb datos
+        timestamptz fecha }
     registro_fallo { bigint id PK
         bigint sincronizacion_id FK
         smallint fuente_id FK
@@ -547,9 +554,12 @@ erDiagram
     alerta { bigint id PK
         bigint indicador_carga_id FK
         text mensaje
+        int peticiones_abiertas
+        int umbral
         timestamptz fecha
         boolean enviada_rocket_chat }
     registro_no_reconocido { bigint id PK
+        varchar clave UK
         bigint sincronizacion_id FK
         smallint fuente_id FK
         varchar codigo_original
@@ -575,7 +585,7 @@ flowchart LR
             AUT["auth (ServicioSesiones, Rol)"]
             SIN["sincronizacion (Sincronizacion, programador)"]
             CON["conectores (Conector y subclases)"]
-            DAT["datos (calcularCarga, alertas, AlmacenMemoria)"]
+            DAT["datos (calcularCarga, alertas, AlmacenMemoria / AlmacenPostgres)"]
         end
         DB[("contenedor postgres :5432<br/>database/schema.sql")]
     end
@@ -592,7 +602,7 @@ flowchart LR
     RUT --> DAT
     SIN --> CON
     SIN --> DAT
-    DAT -. "pendiente: persistencia" .-> DB
+    DAT -- "SQL (pg) si hay DATABASE_URL" --> DB
     AUT -. "pendiente: SSO real" .-> SSO
     CON -- API --> RM & GL & GP & RC
     DAT -- "CU-09 Enviar alerta" --> RC
