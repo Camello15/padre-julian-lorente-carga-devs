@@ -2,9 +2,27 @@
 
 Proyecto académico UTPL – Reto 2 COAC Padre Julián Lorente: dashboard que centraliza la carga de trabajo de los desarrolladores (RedMine, GitLab, GLPI, Rocket Chat).
 
-El área de TI de la cooperativa reparte su trabajo entre RedMine, GitLab, GLPI y Rocket Chat. Este prototipo lee las cuatro herramientas por API cada 15 minutos, unifica los datos por desarrollador y los muestra en un dashboard con carga, avance, filtros, alertas y exportación.
+El área de TI de la cooperativa reparte su trabajo entre RedMine, GitLab, GLPI y Rocket Chat. Este prototipo lee las cuatro herramientas por API cada 15 minutos, unifica los datos por desarrollador y los muestra en un dashboard con carga, avance, filtros y alertas. La exportación a Excel y PDF (CU-04) está pendiente.
 
 > **Estado:** prototipo con **datos de prueba** y **SSO simulado**. Todavía no hay acceso a las APIs reales de la cooperativa. Todos los nombres de personas, proyectos y peticiones son ficticios.
+
+## Entrega para evaluación
+
+| Entregable | Dónde |
+|---|---|
+| **Diagramas** (con imágenes, en este orden) | [docs/diagramas/README.md](docs/diagramas/README.md) |
+| 1. Cadena de valor | [imagen](docs/diagramas/img/01-cadena-de-valor.png) |
+| 2. Flujo de valor | [imagen](docs/diagramas/img/02-flujo-de-valor.png) |
+| 3. Mapa de capacidades | [imagen](docs/diagramas/img/03-mapa-de-capacidades.png) |
+| 4. Diagrama de casos de uso | [imagen](docs/diagramas/img/04-casos-de-uso.png) |
+| 5. Diagrama de clases | [imagen](docs/diagramas/img/05-clases.png) |
+| 6. Diagramas de secuencia, uno por caso de uso (CU-01 a CU-11) | [índice](docs/diagramas/README.md#6-diagramas-de-secuencia) |
+| 7. Diagrama de componentes | [imagen](docs/diagramas/img/07-componentes.png) |
+| 8. Diagrama de paquetes | [imagen](docs/diagramas/img/08-paquetes.png) |
+| 9. Diagrama de despliegue | [imagen](docs/diagramas/img/09-despliegue.png) |
+| **Documentación de la arquitectura** | [docs/08-arquitectura.md](docs/08-arquitectura.md) |
+| Casos de uso (fichas) y requisitos | [docs/04-casos-de-uso.md](docs/04-casos-de-uso.md) · [docs/02-requisitos.md](docs/02-requisitos.md) |
+| Prototipo funcionando | [Arrancar en local](#arrancar-en-local) (usuarios de prueba: PMO, Técnico, Administrativo y Administrador TI) |
 
 ## Equipo
 
