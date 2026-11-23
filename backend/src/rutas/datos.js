@@ -80,7 +80,7 @@ export function rutasDatos(almacen, umbral) {
 
     const indicadores = calcularCarga(almacen.peticiones, almacen.desarrolladores, umbral);
     const alertas = generarAlertas(indicadores, umbral);
-    almacen.guardarResultado({ indicadores, alertas });
+    await almacen.guardarResultado({ indicadores, alertas });
 
     return res.json({ umbral, indicadores, alertas });
   });
@@ -95,6 +95,9 @@ export function rutasDatos(almacen, umbral) {
   // PATCH /api/registros-no-reconocidos/:id — Marcar como revisado o asociar petición (CU-11).
   router.patch('/registros-no-reconocidos/:id', requierePermiso('configurar'), async (req, res) => {
     const peticionCodigo = typeof req.body?.peticionCodigo === 'string' ? req.body.peticionCodigo.trim() : null;
+    if (peticionCodigo && !almacen.peticiones.some((p) => p.codigo === peticionCodigo)) {
+      return res.status(400).json({ error: `La petición ${peticionCodigo} no existe.` });
+    }
     const actualizado = await almacen.marcarRegistroNoReconocido(req.params.id, peticionCodigo || null);
     if (!actualizado) {
       return res.status(404).json({ error: 'Registro no reconocido no encontrado.' });

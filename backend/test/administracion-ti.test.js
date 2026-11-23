@@ -82,6 +82,13 @@ describe('Administración TI', () => {
     assert.equal(pendientes.total, registros.length - 1);
   });
 
+  it('responde 400 si se vincula a una petición que no existe', async () => {
+    const token = await login('ADMINISTRADOR_TI');
+    const { registros } = await (await pedir('/api/registros-no-reconocidos', token)).json();
+    const r = await pedir(`/api/registros-no-reconocidos/${encodeURIComponent(registros[0].id)}`, token, 'PATCH', { peticionCodigo: 'POA-1999-999' });
+    assert.equal(r.status, 400);
+  });
+
   it('responde 404 si el registro no existe', async () => {
     const r = await pedir('/api/registros-no-reconocidos/no-existe', await login('ADMINISTRADOR_TI'), 'PATCH', {});
     assert.equal(r.status, 404);

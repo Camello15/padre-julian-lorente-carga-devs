@@ -49,7 +49,7 @@ export class Sincronizacion {
           const desde = null; // TODO (Bryan): lectura incremental desde la última sincronización exitosa.
           try {
             const { datos, intentos } = await this.leerConReintentos(conector, desde);
-            this.almacen.guardarDatosFuente(nombre, datos, this.reloj());
+            await this.almacen.guardarDatosFuente(nombre, datos, this.reloj());
             return { nombre, datos, estado: 'ok', intentos, registros: datos.length, ultimaLecturaExitosa: this.reloj().toISOString() };
           } catch (error) {
             const respaldo = this.almacen.ultimosDatosFuente(nombre);
@@ -83,7 +83,7 @@ export class Sincronizacion {
         registrosNoReconocidos: unificado.registrosNoReconocidos.length,
       };
 
-      this.almacen.guardarResultado({
+      await this.almacen.guardarResultado({
         desarrolladores: this.desarrolladores,
         proyectos: unificado.proyectos,
         modulosConCambios: unificado.modulosConCambios,

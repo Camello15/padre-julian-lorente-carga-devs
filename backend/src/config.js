@@ -33,6 +33,10 @@ export const config = Object.freeze({
   umbral: {
     maxPeticiones: entero(process.env.UMBRAL_MAX_PETICIONES, 6),
   },
+  // Sin DATABASE_URL el backend guarda los datos en memoria (AlmacenMemoria).
+  baseDatos: {
+    url: texto(process.env.DATABASE_URL),
+  },
   avancePorEtapaJson: texto(process.env.AVANCE_POR_ETAPA),
   fuentes: {
     redmine: { url: texto(process.env.REDMINE_URL), apiKey: process.env.REDMINE_API_KEY ?? '' },

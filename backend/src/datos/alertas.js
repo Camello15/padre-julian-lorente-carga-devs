@@ -8,6 +8,13 @@ export function limpiarHistorialAlertas() {
   historialEnviosRocketChat.clear();
 }
 
+/** Recupera las últimas Alertas enviadas (desde PostgreSQL) para no reenviarlas tras reiniciar el backend. */
+export function restaurarHistorialAlertas(enviadas) {
+  for (const { desarrolladorId, peticionesAbiertas, umbral } of enviadas) {
+    historialEnviosRocketChat.set(desarrolladorId, `${peticionesAbiertas}:${umbral}`);
+  }
+}
+
 /** Genera una Alerta por cada Desarrollador cuya Carga supera el Umbral (CU-09, RF-12). */
 export function generarAlertas(indicadores, umbral, fecha = new Date()) {
   return indicadores
