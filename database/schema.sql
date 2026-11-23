@@ -64,6 +64,13 @@ CREATE TABLE sincronizacion (
   estado  VARCHAR(20) NOT NULL CHECK (estado IN ('en-curso', 'ok', 'parcial', 'fallida'))
 );
 
+-- Últimos datos buenos de cada Fuente: si una Fuente falla, la Sincronización los reutiliza (RNF-01, CU-06).
+CREATE TABLE lectura_fuente (
+  fuente_id  SMALLINT PRIMARY KEY REFERENCES fuente(id),
+  datos      JSONB NOT NULL,
+  fecha      TIMESTAMPTZ NOT NULL
+);
+
 CREATE TABLE registro_fallo (
   id                 BIGSERIAL PRIMARY KEY,
   sincronizacion_id  BIGINT NOT NULL REFERENCES sincronizacion(id),
@@ -138,12 +145,15 @@ CREATE TABLE alerta (
   id                   BIGSERIAL PRIMARY KEY,
   indicador_carga_id   BIGINT NOT NULL REFERENCES indicador_carga(id),
   mensaje              TEXT NOT NULL,
+  peticiones_abiertas  INTEGER NOT NULL,
+  umbral               INTEGER NOT NULL,                -- max_peticiones vigente al generar la Alerta.
   fecha                TIMESTAMPTZ NOT NULL DEFAULT now(),
   enviada_rocket_chat  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE registro_no_reconocido (
   id                 BIGSERIAL PRIMARY KEY,
+  clave              VARCHAR(300) NOT NULL UNIQUE,      -- fuente:codigo_original[#n], estable entre Sincronizaciones (CU-11).
   sincronizacion_id  BIGINT REFERENCES sincronizacion(id),
   fuente_id          SMALLINT NOT NULL REFERENCES fuente(id),
   codigo_original    VARCHAR(255) NOT NULL,
