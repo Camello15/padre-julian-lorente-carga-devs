@@ -63,14 +63,25 @@ Abre http://localhost:5173 en Chrome. ChromeOS reenvía automáticamente los pue
 | `npm run test:cobertura` | Pruebas con reporte de cobertura (lcov) |
 | `npm run build` | Build de producción del frontend |
 
-### Con Docker
+### Con Docker (recomendado para evaluar)
+
+Requisitos: Docker con Docker Compose v2. No hace falta Node.js ni un archivo `.env`.
 
 ```bash
-cp .env.example .env      # define POSTGRES_PASSWORD
+git clone https://github.com/Camello15/padre-julian-lorente-carga-devs.git
+cd padre-julian-lorente-carga-devs
 docker compose up --build
 ```
 
-Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql` y el backend guarda ahí los datos (ver [Persistencia](#persistencia)).
+| Servicio | URL | Qué es |
+|---|---|---|
+| frontend | http://localhost:8080 | Dashboard (nginx; reenvía `/api` al backend) |
+| backend | http://localhost:3000/api/salud | API; debe responder `{"estado":"ok"}` |
+| postgres | `localhost:5432` (solo desde tu equipo) | Base `carga_devs`, usuario `carga_devs`, contraseña `carga_devs_local` |
+
+Al crear la base, PostgreSQL ejecuta `database/schema.sql` y el backend se conecta solo (`DATABASE_URL` está definida en `docker-compose.yml`). Al arrancar, el backend hace la primera sincronización con los datos de prueba. Ver [Persistencia](#persistencia).
+
+Para cambiar la contraseña de la base, el umbral u otras variables, copia `.env.example` a `.env` y edítalo antes de levantar. Para detener todo: `docker compose down` (conserva los datos) o `docker compose down -v` (borra también la base).
 
 > **¿Ya habías levantado Docker antes de esta versión?** `schema.sql` solo se ejecuta cuando se crea el volumen de la base, así que tu base tiene el esquema viejo. Bórrala una vez (se pierden los datos de prueba guardados) y vuelve a levantar:
 >
@@ -88,7 +99,7 @@ Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca c
 
 `AlmacenPostgres` mantiene la memoria como caché de lectura (las rutas no cambian) y guarda cada escritura en PostgreSQL en una transacción. Al arrancar recupera el umbral configurado por el Administrador TI, los últimos datos de cada fuente (RNF-01), las revisiones de registros no reconocidos y las alertas ya enviadas a Rocket Chat. El SSO y los conectores siguen en modo simulado hasta tener credenciales reales.
 
-Para usar PostgreSQL con `npm run dev`, levanta solo la base (`docker compose up -d postgres`) y en `.env` pon `DATABASE_URL=postgres://carga_devs:<POSTGRES_PASSWORD>@localhost:5432/carga_devs`.
+Para usar PostgreSQL con `npm run dev`, levanta solo la base (`docker compose up -d postgres`) y en `.env` pon `DATABASE_URL=postgres://carga_devs:carga_devs_local@localhost:5432/carga_devs`.
 
 ### Pruebas de integración con PostgreSQL
 
