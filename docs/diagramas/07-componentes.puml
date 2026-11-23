@@ -1,0 +1,67 @@
+@startuml
+!include estilo.iuml
+skinparam componentStyle uml2
+left to right direction
+title Diagrama de componentes · Dashboard de carga de desarrolladores
+
+component "Dashboard web\n(React + Vite + Chart.js)" as WEB {
+  component "paginas\n(Login, Dashboard)" as PAG
+  component "componentes\n(PanelFiltros, GraficoCarga,\nTablaPeticiones, PanelAlertas,\nPanelAdministracionTI)" as COMP
+  component "api.js\n(cliente HTTP)" as CLI
+}
+
+interface "API REST /api\n(JSON + Bearer)" as IAPI
+
+component "API\n(Node.js 22 + Express 5)" as API {
+  component "rutas\n(auth, datos,\nsincronizacion)" as RUT
+  component "auth\n(ServicioSesiones, Rol,\nrequierePermiso)" as AUT
+  component "sincronizacion\n(Sincronizacion,\nnormalizador, programador)" as SIN
+  interface "IConector\nleerDatos(desde)" as ICON
+  component "conectores\n(ConectorRedmine, ConectorGitlab,\nConectorGlpi, ConectorRocketChat)" as CON
+  component "datos\n(carga, avance, alertas, filtro,\nAlmacenMemoria, AlmacenPostgres,\nRepositorioSincronizacionPostgres)" as DAT
+  component "config\n(variables .env)" as CFG
+}
+
+interface "SQL (pg)" as ISQL
+database "PostgreSQL 17\n(18 tablas)" as BD
+
+interface "REST HTTPS" as IREST
+component "RedMine" as RM <<sistema externo>>
+component "GitLab" as GL <<sistema externo>>
+component "GLPI" as GP <<sistema externo>>
+component "Rocket Chat" as RC <<sistema externo>>
+component "SSO de la cooperativa\n«pendiente»" as SSO <<sistema externo>>
+
+PAG ..> COMP
+PAG ..> CLI
+COMP ..> CLI
+CLI --( IAPI
+IAPI -- RUT
+
+RUT ..> AUT
+RUT ..> DAT
+SIN ..> DAT
+SIN --( ICON
+ICON -- CON
+AUT ..> CFG
+CON ..> CFG
+DAT ..> CFG
+
+DAT --( ISQL
+ISQL -- BD
+
+CON --( IREST
+IREST -- RM
+IREST -- GL
+IREST -- GP
+IREST -- RC
+DAT ..> RC : envía alertas (CU-09)
+AUT ..> SSO : valida identidad
+
+note bottom of ICON
+  Patrón Adapter (AD-01):
+  cada conector implementa
+  IConector; agregar una fuente
+  es agregar un conector.
+end note
+@enduml

@@ -1,0 +1,49 @@
+---
+title: Flujo de valor · de la petición a la redistribución del trabajo
+---
+flowchart LR
+    INI(["Llega trabajo nuevo a TI"]):::inicio
+    subgraph REG["1 · Registro (herramientas de la cooperativa)"]
+        direction TB
+        E1["RedMine<br/>Peticion POA / REC / Iniciativa<br/>con Código y Etapa"]
+        E2["GLPI<br/>incidente con el código en el título"]
+        E3["GitLab<br/>rama feature/POA-2026-001-…"]
+        E4["Rocket Chat<br/>mensajes con el código"]
+    end
+    subgraph SIS["2 · Dashboard de carga (cada 15 min)"]
+        direction TB
+        S1["CU-05 Sincronizar fuentes<br/>3 reintentos · CU-06"]
+        S2["CU-07 Cruzar datos por código<br/>sin duplicados"]
+        S3["CU-08 Calcular carga y avance<br/>10/40/70/90/100 % por etapa"]
+        S4{"¿peticionesAbiertas ><br/>Umbral.maxPeticiones?"}
+        S5["CU-09 Enviar alerta<br/>pantalla + #ti-alertas"]:::alerta
+        S6["RegistroNoReconocido"]
+    end
+    subgraph DEC["3 · Decisión"]
+        direction TB
+        D1["CU-03 Consultar dashboard<br/>CU-02 Filtrar"]
+        D2["PMO redistribuye el trabajo"]:::valor
+        D3["Administrador TI<br/>CU-10 ajusta el umbral<br/>CU-11 revisa no reconocidos"]
+    end
+    FIN(["Entregas a tiempo para<br/>las áreas de negocio y el socio"]):::inicio
+
+    INI --> REG
+    E1 & E2 & E3 & E4 --> S1
+    S1 --> S2 --> S3 --> S4
+    S2 -. "sin código" .-> S6
+    S4 -- sí --> S5 --> D1
+    S4 -- no --> D1
+    D1 --> D2 --> FIN
+    S6 --> D3
+    D3 -. retroalimenta .-> S3
+
+    N1["Antes: cruce manual entre 4 herramientas,<br/>la sobrecarga se descubría tarde.<br/>Ahora: dato con ≤ 15 min de atraso y alerta automática."]:::nota
+    FIN ~~~ N1
+
+    classDef inicio fill:#004ABD,color:#fff,stroke:#00347F
+    classDef alerta fill:#FBEDEA,stroke:#A8382D,color:#14233A
+    classDef valor fill:#F5BD04,stroke:#B88D00,color:#14233A
+    classDef nota fill:#FFFDF2,stroke:#C9B46A,color:#14233A,font-size:12px
+    style REG fill:#F4F6F9,stroke:#8A97AB
+    style SIS fill:#EEF3FB,stroke:#7E9CCB
+    style DEC fill:#FFF8E1,stroke:#C9A227

@@ -1,0 +1,43 @@
+sequenceDiagram
+    title CU-02 Filtrar información
+    autonumber
+    actor U as Usuario de la cooperativa
+    participant F as PanelFiltros.jsx
+    participant D as Dashboard.jsx
+    participant A as api.js
+    participant M as requiereSesion
+    participant R as rutas/datos.js
+    participant FI as filtro.js
+    participant AM as AlmacenMemoria
+
+    Note over U,AM: Requiere CU-01 (Authorization: Bearer token)
+    U->>F: Elige desarrollador, tipo, proyecto, módulo del core, desde y hasta
+    F->>D: onCambiar(filtros)
+    D->>D: construirConsulta(filtros)
+    par Carga
+        D->>A: pedir("/carga?...")
+        A->>M: GET /api/carga
+    and Peticiones
+        D->>A: pedir("/peticiones?...")
+        A->>M: GET /api/peticiones
+    end
+    M->>M: ServicioSesiones.obtenerSesion(token)
+    alt sesión inválida o expirada
+        M-->>A: 401
+        A-->>D: ErrorSesion → vuelve a Login.jsx
+    else sesión válida
+        M->>R: req.usuario
+        R->>FI: crearFiltro(query)
+        R->>FI: aplicarRestriccionRol(filtro, usuario)
+        Note right of FI: Técnico: desarrolladorId = el suyo (se impone en el servidor)
+        R->>AM: peticiones, desarrolladores (caché en memoria)
+        R->>FI: filtrarPeticiones(peticiones, filtro)
+        alt filtro inválido
+            FI-->>R: FiltroInvalidoError
+            R-->>A: 400
+        else filtro válido
+            R-->>A: 200 {filtro, peticiones} y {filtro, umbral, resumen, indicadores}
+            A-->>D: datos filtrados
+            D-->>U: Actualiza resumen, gráfico y tabla
+        end
+    end

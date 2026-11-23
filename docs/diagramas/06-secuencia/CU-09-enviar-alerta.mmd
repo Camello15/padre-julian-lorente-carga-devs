@@ -1,0 +1,31 @@
+sequenceDiagram
+    title CU-09 Enviar alerta
+    autonumber
+    participant S as Sincronizacion
+    participant AL as alertas.js
+    participant RC as Rocket Chat
+    participant AP as AlmacenPostgres
+    participant BD as PostgreSQL
+    participant R as rutas/datos.js
+    actor U as Usuario (Dashboard.jsx)
+
+    Note over S,U: «extend» de CU-08: peticionesAbiertas > Umbral.maxPeticiones (por defecto 6)
+    S->>AL: generarAlertas(indicadores, umbral)
+    AL-->>S: una Alerta por IndicadorCarga con superaUmbral
+    loop Cada Alerta
+        S->>AL: enviarAlertaRocketChat(alerta)
+        alt USAR_MOCKS=true o sin ROCKETCHAT_URL
+            AL-->>S: enviadaRocketChat = false
+        else misma carga y umbral ya enviados (historial)
+            AL-->>S: no se reenvía
+        else alerta nueva
+            AL->>RC: POST /api/v1/chat.postMessage {channel: ROCKETCHAT_CANAL_ALERTAS}
+            RC-->>AL: 200
+            AL-->>S: enviadaRocketChat = true
+        end
+    end
+    S->>AP: guardarResultado({alertas, ...})
+    AP->>BD: INSERT alerta (enviada_rocket_chat, peticiones_abiertas, umbral)
+    U->>R: GET /api/alertas
+    R-->>U: 200 {total, alertas} → PanelAlertas.jsx las muestra en pantalla
+    Note over AP,BD: Al reiniciar: AlmacenPostgres.inicializar → restaurarHistorialAlertas (no reenvía)

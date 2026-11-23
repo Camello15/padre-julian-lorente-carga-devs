@@ -1,0 +1,23 @@
+sequenceDiagram
+    title CU-08 Calcular carga y avance
+    autonumber
+    participant S as Sincronizacion
+    participant C as carga.js
+    participant AV as avance.js
+    participant AP as AlmacenPostgres
+    participant BD as PostgreSQL
+
+    Note over S,BD: «include» de CU-05. También se recalcula en CU-10.
+    S->>C: calcularCarga(peticiones, desarrolladores, umbral)
+    loop Cada Desarrollador
+        C->>C: peticiones con estado 'abierta' → peticionesAbiertas y porTipo
+        C->>AV: avancePromedio(abiertas)
+        AV-->>C: 10 / 40 / 70 / 90 / 100 % según Etapa (promedio)
+        C->>C: superaUmbral = peticionesAbiertas > umbral.maxPeticiones
+    end
+    C-->>S: List~IndicadorCarga~
+    opt algún IndicadorCarga.superaUmbral
+        Note over S: «extend» CU-09 Enviar alerta
+    end
+    S->>AP: guardarResultado({sincronizacionId, indicadores, ...})
+    AP->>BD: INSERT indicador_carga

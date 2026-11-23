@@ -32,7 +32,9 @@ REFERENCIAS EN EL REPO
   docs/02-requisitos.md        RF-01..RF-13, RNF-01..RNF-06
   docs/04-casos-de-uso.md      fichas CU-01..CU-11
   docs/05-especificaciones/    escenarios Gherkin por CU
-  docs/06-diagramas.md         diccionario 6.0 y diagramas Mermaid ya validados
+  docs/diagramas/              ENTREGA: los 9 diagramas (fuente .mmd/.puml + img/*.png)
+  docs/08-arquitectura.md      documentacion de la arquitectura
+  docs/06-diagramas.md         diccionario 6.0, actividades y entidad-relacion
   database/schema.sql          esquema PostgreSQL (18 tablas)
   database/migrations/         001-snapshot-fuente.sql, 002-persistencia-datos.sql
 

@@ -1,0 +1,47 @@
+---
+title: Diagrama de paquetes · Dashboard de carga de desarrolladores
+---
+flowchart TB
+    subgraph FE["«subsistema» frontend/src · React + Vite"]
+        PAG["<b>«paquete» paginas</b><br/>──────────<br/>Login<br/>Dashboard"]:::fe
+        COMP["<b>«paquete» componentes</b><br/>──────────<br/>Encabezado · PanelFiltros<br/>ResumenCarga · GraficoCarga<br/>TablaPeticiones · RielEtapas<br/>PanelAlertas · PanelAdministracionTI"]:::fe
+        UTIL["<b>«paquete» utilidades</b><br/>──────────<br/>catalogo · formato"]:::fe
+        API["<b>«paquete» (raíz)</b><br/>──────────<br/>main.jsx · App.jsx<br/>api.js (cliente HTTP)"]:::fe
+    end
+
+    subgraph BE["«subsistema» backend/src · Node.js + Express"]
+        ARR["<b>«paquete» arranque</b><br/>──────────<br/>index.js · app.js"]:::be
+        RUT["<b>«paquete» rutas</b><br/>──────────<br/>auth · datos · sincronizacion"]:::be
+        AUTH["<b>«paquete» auth</b><br/>──────────<br/>Rol · ServicioSesiones<br/>requiereSesion · requierePermiso"]:::be
+        SINC["<b>«paquete» sincronizacion</b><br/>──────────<br/>Sincronizacion · normalizador<br/>programador"]:::be
+        CON["<b>«paquete» conectores</b><br/>──────────<br/>Conector «abstract»<br/>ConectorRedmine · ConectorGitlab<br/>ConectorGlpi · ConectorRocketChat"]:::be
+        DAT["<b>«paquete» datos</b><br/>──────────<br/>Desarrollador · Proyecto · ModuloCore<br/>Peticion · ActividadCodigo · IndicadorCarga<br/>Umbral · Alerta · RegistroNoReconocido<br/>AlmacenMemoria · AlmacenPostgres<br/>RepositorioSincronizacionPostgres"]:::be
+        CFG["<b>«paquete» config</b><br/>──────────<br/>config.js (.env)"]:::be
+    end
+
+    PAG -.->|«import»| COMP
+    PAG -.->|«import»| UTIL
+    PAG -.->|«import»| API
+    COMP -.->|«import»| UTIL
+    COMP -.->|«import»| API
+
+    API ==>|"«HTTP REST» /api · Bearer"| RUT
+
+    ARR -.->|«import»| RUT
+    ARR -.->|«import»| SINC
+    ARR -.->|«import»| CON
+    ARR -.->|«import»| AUTH
+    ARR -.->|«import»| DAT
+    ARR -.->|«import»| CFG
+    RUT -.->|«import»| CFG
+    RUT -.->|«import»| AUTH
+    RUT -.->|«import»| DAT
+    SINC -.->|«import»| DAT
+    AUTH -.->|«import»| CFG
+    CON -.->|«import»| CFG
+    DAT -.->|«import»| CFG
+
+    classDef fe fill:#EFEDFF,stroke:#5B4FB0,color:#14213D
+    classDef be fill:#FFFFFF,stroke:#5A6B85,color:#14213D
+    style FE fill:#F7F6FD,stroke:#5B4FB0,color:#14213D
+    style BE fill:#F4F6F9,stroke:#5A6B85,color:#14213D
