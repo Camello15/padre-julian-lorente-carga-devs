@@ -5,8 +5,8 @@
 | Actor | Descripción |
 |---|---|
 | PMO | Persona de proyectos. Ve la carga de todo el equipo y exporta reportes. |
-| Usuario técnico | Desarrollador. Solo ve su propia carga. |
-| Usuario administrativo | Personal administrativo que consulta la carga del equipo. No configura el umbral. |
+| Técnico | Desarrollador (rol `TECNICO`). Solo ve su propia carga. |
+| Administrativo | Personal administrativo que consulta la carga del equipo. No configura el umbral. |
 | Administrador TI | Configura el umbral y revisa los registros no reconocidos. Es el único rol con el permiso `configurar`. |
 | Programador de tareas (cron) | Dispara la sincronización cada 15 minutos. |
 | SSO de la cooperativa | Autentica a los usuarios. |
@@ -16,15 +16,15 @@
 
 | ID | Caso de uso | Actor | Módulo | Responsable |
 |---|---|---|---|---|
-| CU-01 | Iniciar sesión con SSO | PMO, usuarios | Usuario web y seguridad | Camilo |
-| CU-02 | Filtrar información | PMO, usuarios | Usuario web y seguridad | Camilo |
-| CU-03 | Consultar dashboard de carga y avance | PMO, usuarios | Usuario web y seguridad | Camilo |
+| CU-01 | Iniciar sesión con SSO | PMO, Técnico, Administrativo, Administrador TI | Usuario web y seguridad | Camilo |
+| CU-02 | Filtrar información | PMO, Técnico, Administrativo, Administrador TI | Usuario web y seguridad | Camilo |
+| CU-03 | Consultar dashboard de carga y avance | PMO, Técnico, Administrativo, Administrador TI | Usuario web y seguridad | Camilo |
 | CU-04 | Exportar reporte | PMO | Usuario web y seguridad | Camilo |
 | CU-05 | Sincronizar fuentes | Programador de tareas (cron) | Integración | Bryan |
-| CU-06 | Registrar fallo de fuente | Programador de tareas | Integración | Bryan |
-| CU-07 | Cruzar datos por código | Programador de tareas | Integración | Bryan |
-| CU-08 | Calcular carga y avance | Programador de tareas | Datos y alertas | Cristina |
-| CU-09 | Enviar alerta | Programador de tareas | Datos y alertas | Cristina |
+| CU-06 | Registrar fallo de fuente | Programador de tareas (cron) | Integración | Bryan |
+| CU-07 | Cruzar datos por código | Programador de tareas (cron) | Integración | Bryan |
+| CU-08 | Calcular carga y avance | Programador de tareas (cron) | Datos y alertas | Cristina |
+| CU-09 | Enviar alerta | Programador de tareas (cron) | Datos y alertas | Cristina |
 | CU-10 | Configurar umbral | Administrador TI | Datos y alertas | Cristina |
 | CU-11 | Revisar registros no reconocidos | Administrador TI | Datos y alertas | Cristina |
 
@@ -44,10 +44,10 @@
 
 ```mermaid
 flowchart LR
-    PMO(["PMO"]) & USR(["Usuarios"]) --> CU03
+    PMO(["PMO"]) & TEC(["Técnico"]) & ADV(["Administrativo"]) & ATI(["Administrador TI"]) --> CU03
     PMO --> CU04
-    CRON(["Programador de tareas"]) --> CU05
-    ADM(["Administrador TI"]) --> CU10 & CU11
+    CRON(["Programador de tareas (cron)"]) --> CU05
+    ATI --> CU10 & CU11
     CU02["CU-02 Filtrar información"] -. include .-> CU01["CU-01 Iniciar sesión con SSO"]
     CU03["CU-03 Consultar dashboard"] -. include .-> CU01
     CU04["CU-04 Exportar reporte"] -. include .-> CU01
@@ -75,7 +75,7 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-01 |
 | **Nombre** | Iniciar sesión con SSO |
-| **Actores** | PMO, usuarios; SSO de la cooperativa |
+| **Actores** | PMO, Técnico, Administrativo, Administrador TI; SSO de la cooperativa |
 | **Descripción** | |
 | **Precondiciones** | |
 | **Flujo principal** | 1. <br>2. <br>3. |
@@ -92,7 +92,7 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-02 |
 | **Nombre** | Filtrar información |
-| **Actores** | PMO, usuarios |
+| **Actores** | PMO, Técnico, Administrativo, Administrador TI |
 | **Descripción** | |
 | **Precondiciones** | |
 | **Flujo principal** | 1. <br>2. <br>3. |
@@ -109,7 +109,7 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-03 |
 | **Nombre** | Consultar dashboard de carga y avance |
-| **Actores** | PMO, usuarios |
+| **Actores** | PMO, Técnico, Administrativo, Administrador TI |
 | **Descripción** | |
 | **Precondiciones** | |
 | **Flujo principal** | 1. <br>2. <br>3. |
@@ -160,7 +160,7 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-06 |
 | **Nombre** | Registrar fallo de fuente |
-| **Actores** | Programador de tareas |
+| **Actores** | Programador de tareas (cron) |
 | **Descripción** | |
 | **Precondiciones** | |
 | **Flujo principal** | 1. <br>2. <br>3. |
@@ -177,7 +177,7 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 |---|---|
 | **ID** | CU-07 |
 | **Nombre** | Cruzar datos por código |
-| **Actores** | Programador de tareas |
+| **Actores** | Programador de tareas (cron) |
 | **Descripción** | |
 | **Precondiciones** | |
 | **Flujo principal** | 1. <br>2. <br>3. |

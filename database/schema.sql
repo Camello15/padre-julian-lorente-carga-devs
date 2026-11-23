@@ -8,6 +8,7 @@ CREATE TYPE etapa AS ENUM ('ANALISIS', 'DESARROLLO', 'CERTIFICACION', 'DESPLIEGU
 -- ---------- Usuario web y seguridad ----------
 CREATE TABLE rol (
   id            SMALLSERIAL PRIMARY KEY,
+  clave         VARCHAR(20) NOT NULL UNIQUE,          -- PMO, TECNICO, ADMINISTRATIVO, ADMINISTRADOR_TI
   nombre        VARCHAR(30) NOT NULL UNIQUE,          -- PMO, Técnico, Administrativo, Administrador TI
   permisos      TEXT[] NOT NULL DEFAULT '{}',
   solo_propios  BOOLEAN NOT NULL DEFAULT FALSE
@@ -88,7 +89,7 @@ CREATE TABLE peticion (
   titulo            VARCHAR(255) NOT NULL,
   tipo              tipo_trabajo NOT NULL,
   etapa             etapa NOT NULL,
-  abierta           BOOLEAN NOT NULL DEFAULT TRUE,
+  estado            VARCHAR(10) NOT NULL DEFAULT 'abierta' CHECK (estado IN ('abierta', 'cerrada')),
   desarrollador_id  VARCHAR(20) REFERENCES desarrollador(id),
   proyecto_codigo   VARCHAR(60) REFERENCES proyecto(codigo),
   fecha_inicio      DATE,
@@ -138,7 +139,7 @@ CREATE TABLE alerta (
   indicador_carga_id   BIGINT NOT NULL REFERENCES indicador_carga(id),
   mensaje              TEXT NOT NULL,
   fecha                TIMESTAMPTZ NOT NULL DEFAULT now(),
-  enviada_rocketchat   BOOLEAN NOT NULL DEFAULT FALSE
+  enviada_rocket_chat  BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE registro_no_reconocido (
@@ -148,20 +149,21 @@ CREATE TABLE registro_no_reconocido (
   codigo_original    VARCHAR(255) NOT NULL,
   motivo             TEXT,
   revisado           BOOLEAN NOT NULL DEFAULT FALSE,
+  peticion_asignada  VARCHAR(40) REFERENCES peticion(codigo),  -- Petición a la que TI vinculó el registro (CU-11).
   detectado_en       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_peticion_desarrollador ON peticion (desarrollador_id) WHERE abierta;
+CREATE INDEX idx_peticion_desarrollador ON peticion (desarrollador_id) WHERE estado = 'abierta';
 CREATE INDEX idx_peticion_tipo ON peticion (tipo);
 CREATE INDEX idx_indicador_desarrollador ON indicador_carga (desarrollador_id, calculado_en DESC);
 CREATE INDEX idx_no_reconocido_pendiente ON registro_no_reconocido (detectado_en) WHERE NOT revisado;
 
 -- ---------- Datos iniciales ----------
-INSERT INTO rol (nombre, permisos, solo_propios) VALUES
-  ('PMO', '{ver:todos,exportar}', FALSE),
-  ('Técnico', '{ver:propios}', TRUE),
-  ('Administrativo', '{ver:todos}', FALSE),
-  ('Administrador TI', '{ver:todos,configurar}', FALSE);
+INSERT INTO rol (clave, nombre, permisos, solo_propios) VALUES
+  ('PMO', 'PMO', '{ver:todos,exportar}', FALSE),
+  ('TECNICO', 'Técnico', '{ver:propios}', TRUE),
+  ('ADMINISTRATIVO', 'Administrativo', '{ver:todos}', FALSE),
+  ('ADMINISTRADOR_TI', 'Administrador TI', '{ver:todos,configurar}', FALSE);
 
 INSERT INTO fuente (nombre) VALUES ('redmine'), ('gitlab'), ('glpi'), ('rocketchat');
 
