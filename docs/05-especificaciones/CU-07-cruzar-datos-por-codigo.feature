@@ -1,7 +1,7 @@
 # language: es
 # Responsable: Bryan. Requisitos: RF-06, RF-07, RF-09. Incluido por CU-05.
 Característica: CU-07 Cruzar datos por código
-  Como programador de tareas
+  Como Programador de tareas (cron)
   Quiero relacionar los datos de RedMine, GLPI y GitLab mediante el código de una Petición
   Para unificarlos, clasificarlos y reconocer los módulos del core con cambios
 

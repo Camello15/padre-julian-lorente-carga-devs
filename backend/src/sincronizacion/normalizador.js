@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { calcularAvance } from '../datos/avance.js';
 import { Etapa, TipoTrabajo, normalizarClave } from '../datos/constantes.js';
 
@@ -17,6 +18,10 @@ export function extraerCodigo(texto) {
   const codigo = coincidencia[1];
   return codigo.toLowerCase().startsWith('iniciativa') ? codigo.toLowerCase() : codigo.toUpperCase();
 }
+
+/** Id de la actividad en GitLab (SHA o id del MR/pipeline). Los mocks no lo traen: se deriva de forma estable. */
+const idOrigenActividad = (evento) =>
+  String(evento.id ?? evento.sha ?? createHash('sha1').update(`${evento.tipo}|${evento.rama}|${evento.fecha}|${evento.autor ?? ''}`).digest('hex'));
 
 const campo = (issue, nombre) => issue.custom_fields?.find((c) => c.name === nombre)?.value;
 
@@ -94,6 +99,7 @@ export function unificar(datosPorFuente, desarrolladores, detectadoEn = new Date
     peticion.actividades.push({
       tipo: evento.tipo,
       rama: evento.rama,
+      idOrigen: idOrigenActividad(evento),
       fecha: evento.fecha,
       estado: evento.estado ?? null,
       desarrolladorId: porGitlab.get(evento.autor) ?? null,
