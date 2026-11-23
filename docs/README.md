@@ -9,5 +9,6 @@
 | [05-especificaciones/](05-especificaciones/) | Escenarios Gherkin por caso de uso |
 | [06-diagramas.md](06-diagramas.md) | Diagrama de actividades y de clases |
 | [07-glosario.md](07-glosario.md) | Diccionario de términos |
+| [contexto-diagramas-arquitectura.txt](contexto-diagramas-arquitectura.txt) | Guía de nombres, relaciones y flujos para dibujar los artefactos de la rúbrica |
 
 Pendiente (RNF-06): manual técnico y manual de usuario.
