@@ -1,0 +1,52 @@
+@startuml
+!include estilo.iuml
+left to right direction
+title Diagrama de despliegue · Docker Compose
+
+node "Equipo del usuario" <<device>> as PC {
+  node "Navegador web" <<executionEnvironment>> as BR {
+    artifact "Dashboard\n(JS compilado)" as JS
+  }
+}
+
+node "Equipo anfitrión" <<device>> as HOST {
+  node "Docker Engine" <<executionEnvironment>> as DOCK {
+    node "frontend" <<container>> as CFE {
+      component "nginx 1.27-alpine\npuerto 8080 → 80\nproxy /api → backend:3000" as NGX
+      artifact "frontend/dist" as DIST
+    }
+    node "backend" <<container>> as CBE {
+      component "Node.js 22-alpine\npuerto 3000\nnode src/index.js\ncron */15 * * * *" as NODE
+    }
+    node "postgres" <<container>> as CPG {
+      database "PostgreSQL 17-alpine\n127.0.0.1:5432" as PG
+      artifact "schema.sql" as SQL
+    }
+    storage "volumen\ndatos-postgres" as VOL
+  }
+}
+
+node "Red interna de la cooperativa" <<device>> as COOP {
+  node "RedMine" <<server>> as RM
+  node "GitLab" <<server>> as GL
+  node "GLPI" <<server>> as GP
+  node "Rocket Chat" <<server>> as RC
+  node "SSO\n«pendiente»" <<server>> as SSO
+}
+
+BR --> NGX : HTTP :8080
+NGX --> NODE : HTTP /api :3000
+NODE --> PG : TCP :5432 (SQL)
+PG -- VOL
+NODE --> RM : HTTPS REST (lectura)
+NODE --> GL : HTTPS REST (lectura)
+NODE --> GP : HTTPS REST (lectura)
+NODE --> RC : HTTPS REST (lectura y alertas)
+NODE ..> SSO : OIDC/SAML (futuro)
+
+note bottom of HOST
+  Red Docker bridge:
+  padre-julian-lorente-carga-devs_default.
+  Un solo comando: docker compose up
+end note
+@enduml

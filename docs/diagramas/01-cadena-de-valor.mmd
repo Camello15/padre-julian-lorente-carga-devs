@@ -1,0 +1,22 @@
+---
+title: Cadena de valor (Porter) · COAC Padre Julián Lorente
+---
+flowchart TB
+    subgraph APOYO["Actividades de apoyo"]
+        direction LR
+        A1["Infraestructura<br/>(gerencia, finanzas, cumplimiento)"]
+        A2["Talento humano"]
+        A3["<b>Desarrollo tecnológico</b><br/>Área de TI: 1 PMO + 7 desarrolladores<br/>★ aquí aporta el Dashboard de carga"]:::sistema
+        A4["Abastecimiento"]
+    end
+    subgraph PRIMARIAS["Actividades primarias"]
+        direction LR
+        P1["Captación<br/>de ahorros"] --> P2["Colocación<br/>de créditos"] --> P3["Servicios<br/>financieros"] --> P4["Promoción<br/>y canales"] --> P5["Atención<br/>al socio"]
+    end
+    M["<b>Margen</b><br/>valor para el socio"]:::margen
+    APOYO -- "Desarrollo tecnológico entrega software y cambios del core financiero" --> PRIMARIAS
+    PRIMARIAS --> M
+    classDef sistema fill:#004ABD,color:#fff,stroke:#00347F,stroke-width:2px
+    classDef margen fill:#F5BD04,color:#14233A,stroke:#B88D00
+    style APOYO fill:#EEF3FB,stroke:#7E9CCB
+    style PRIMARIAS fill:#FFFFFF,stroke:#7E9CCB

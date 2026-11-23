@@ -1,0 +1,44 @@
+' Estilo común de los diagramas PlantUML (casos de uso, componentes y despliegue).
+skinparam defaultFontName "Inter"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam backgroundColor #FFFFFF
+skinparam ArrowColor #4A5A75
+skinparam ArrowFontColor #14233A
+skinparam TitleFontSize 18
+skinparam TitleFontColor #14233A
+skinparam actor {
+  BorderColor #14233A
+  BackgroundColor #FFFFFF
+}
+skinparam usecase {
+  BackgroundColor #F7F5F0
+  BorderColor #4A5A75
+  FontColor #14233A
+}
+skinparam rectangle {
+  BorderColor #4A5A75
+  FontColor #14233A
+}
+skinparam package {
+  BorderColor #4A5A75
+  FontColor #14233A
+}
+skinparam component {
+  BackgroundColor #EEF3FB
+  BorderColor #4A6FA5
+  FontColor #14233A
+}
+skinparam node {
+  BackgroundColor #F4F6F9
+  BorderColor #4A5A75
+}
+skinparam database {
+  BackgroundColor #EEF3FB
+  BorderColor #4A6FA5
+}
+skinparam legend {
+  BackgroundColor #F4F6F9
+  BorderColor #4A5A75
+}

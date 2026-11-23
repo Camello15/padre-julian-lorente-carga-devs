@@ -1,0 +1,255 @@
+---
+title: Diagrama de clases · Dashboard de carga de desarrolladores
+---
+classDiagram
+    direction LR
+    namespace Usuario_web_y_seguridad {
+        class Usuario {
+            <<conceptual>>
+            -String id
+            -String idSso
+            -String nombre
+            -String correo
+            -String desarrolladorId
+            -Rol rol
+        }
+        class Rol {
+            -String clave
+            -String nombre
+            -List~String~ permisos
+            -bool soloPropios
+        }
+        class Sesion {
+            <<conceptual>>
+            -String token
+            -DateTime inicio
+            -DateTime expira
+            -Usuario usuario
+        }
+        class ServicioSesiones {
+            -int duracionMs
+            -Map~String,Sesion~ sesiones
+            +iniciarSesionMock(claveRol) Sesion
+            +obtenerSesion(token) Sesion
+            +cerrarSesion(token) void
+        }
+        class Filtro {
+            <<conceptual>>
+            -String desarrolladorId
+            -String proyectoId
+            -TipoTrabajo tipo
+            -String moduloCore
+            -Date desde
+            -Date hasta
+        }
+        class Reporte {
+            <<pendiente>>
+            -String formato
+            -DateTime generadoEn
+            -DateTime fechaUltimaSync
+            +generarExcel() File
+            +generarPdf() File
+        }
+    }
+    namespace Integracion {
+        class Fuente {
+            <<objeto_configuracion>>
+            +String nombre
+            +String urlApi
+            +bool activa
+        }
+        class Conector {
+            <<abstract>>
+            +Fuente fuente
+            +leerDatos(desde) Promise~List~
+            +leerMock(archivo) Promise~Object~
+        }
+        class ConectorRedmine {
+            +leerDatos(desde) Promise~List~
+        }
+        class ConectorGitlab {
+            +leerDatos(desde, desarrolladores) Promise~List~
+        }
+        class ConectorGlpi {
+            +leerDatos(desde) Promise~List~
+        }
+        class ConectorRocketChat {
+            +leerDatos(desde) Promise~List~
+            +identidadMensaje(mensaje)
+            +exportarMetadatos(mensajes) List
+            +rehidratarMetadatos(mensajes, metadatos)
+        }
+        class Sincronizacion {
+            +List~Conector~ conectores
+            +AlmacenMemoria almacen
+            +Umbral umbral
+            +int reintentos
+            +int esperaReintentoMs
+            +RepositorioSincronizacionPostgres persistencia
+            +bool modoMocks
+            +bool enEjecucion
+            +leerConReintentos(conector, desde, desarrolladores) Promise
+            +ejecutar() Promise~EstadoSincronizacion~
+        }
+        class EstadoSincronizacion {
+            <<estructura>>
+            +String estado
+            +String inicio
+            +String fin
+            +String ultimaExitosa
+            +List fuentes
+            +List~RegistroFallo~ fallos
+            +int registrosNoReconocidos
+        }
+        class RegistroFallo {
+            <<estructura>>
+            +String fuente
+            +String fecha
+            +int intentos
+            +String mensaje
+        }
+        class AlmacenMemoria {
+            +Map ultimosDatosPorFuente
+            +EstadoSincronizacion estadoSincronizacion
+            +combinarSnapshotFuente(nombre, datos, opciones) List
+            +confirmarSnapshotFuente(nombre, datos, fecha, cursor)
+            +cursorFuente(nombre) String
+            +ultimosDatosFuente(nombre)
+            +guardarResultado(resultado)
+            +listarRegistrosNoReconocidos(opciones) List
+            +marcarRegistroNoReconocido(id, peticionCodigo)
+        }
+        class RepositorioSincronizacionPostgres {
+            -Pool pool
+            +cargarSnapshots() Promise
+            +recuperarSincronizacionesAbandonadas() Promise
+            +crearSincronizacion(inicio) Promise
+            +finalizarSincronizacion(resultado) Promise
+            +cerrar() Promise
+        }
+    }
+    namespace Datos_y_alertas {
+        class AlmacenPostgres {
+            -Pool pool
+            +inicializar(desarrolladores, usuarios, umbral) Promise
+            +guardarResultado(resultado) Promise
+            +guardarUmbral(umbral) Promise
+            +marcarRegistroNoReconocido(id, peticionCodigo) Promise
+            +cerrar() Promise
+        }
+        class Desarrollador {
+            -String id
+            -String nombre
+            -String correo
+            -String usuarioGitlab
+            -int idRedmine
+            -String usuarioGlpi
+        }
+        class Proyecto {
+            -String codigo
+            -String nombre
+        }
+        class ModuloCore {
+            -int id
+            -String nombre
+        }
+        class Peticion {
+            -String codigo
+            -String titulo
+            -TipoTrabajo tipo
+            -Etapa etapa
+            -String estado
+            -String desarrolladorId
+            -Date fechaInicio
+            -Date fechaFin
+            +calcularAvance() int
+        }
+        class ActividadCodigo {
+            -String tipo
+            -String rama
+            -String idOrigen
+            -String estado
+            -DateTime fecha
+        }
+        class IndicadorCarga {
+            -String desarrolladorId
+            -int peticionesAbiertas
+            -Map porTipo
+            -int avancePromedio
+            -bool superaUmbral
+            -DateTime calculadoEn
+        }
+        class Umbral {
+            -int maxPeticiones
+            -DateTime vigenteDesde
+            -String configuradoPor
+            +actualizar(nuevoMaxPeticiones, usuarioId)
+        }
+        class Alerta {
+            -String desarrolladorId
+            -String mensaje
+            -int peticionesAbiertas
+            -int umbral
+            -DateTime fecha
+            -bool enviadaRocketChat
+            +enviar(funcionEnvio) Promise
+        }
+        class RegistroNoReconocido {
+            -String codigoOriginal
+            -String fuente
+            -String motivo
+            -bool revisado
+            -String peticionAsignada
+            -DateTime detectadoEn
+            +marcarRevisado(peticionCodigo)
+        }
+        class TipoTrabajo {
+            <<enumeration>>
+            POA
+            REC
+            INICIATIVA
+            INCIDENTE
+        }
+        class Etapa {
+            <<enumeration>>
+            ANALISIS
+            DESARROLLO
+            CERTIFICACION
+            DESPLIEGUE
+            ESTABILIZACION
+        }
+    }
+
+    Usuario "0..*" --> "1" Rol : tiene
+    Usuario "1" --> "0..*" Sesion : abre
+    ServicioSesiones "1" o-- "0..*" Sesion : gestiona
+    Usuario "0..1" --> "0..1" Desarrollador : es (rol Técnico)
+    Usuario "1" --> "0..*" Reporte : exporta
+    Usuario "1" --> "0..*" Umbral : configura
+    Reporte "1" --> "1" Filtro : usa
+    Filtro ..> TipoTrabajo
+
+    Conector <|-- ConectorRedmine
+    Conector <|-- ConectorGitlab
+    Conector <|-- ConectorGlpi
+    Conector <|-- ConectorRocketChat
+    Conector "1" --> "1" Fuente : fuente
+    Sincronizacion "1" o-- "4" Conector : conectores
+    Sincronizacion "1" --> "1" AlmacenMemoria : almacen
+    Sincronizacion "1" --> "0..1" RepositorioSincronizacionPostgres : persistencia
+    AlmacenMemoria "1" *-- "1" EstadoSincronizacion
+    EstadoSincronizacion "1" *-- "0..50" RegistroFallo : fallos
+    AlmacenMemoria <|-- AlmacenPostgres
+
+    Sincronizacion "1" --> "0..*" IndicadorCarga : calcula
+    Sincronizacion "1" --> "0..*" RegistroNoReconocido : detecta
+    Proyecto "1" o-- "0..*" Peticion : agrupa
+    Desarrollador "1" --> "0..*" Peticion : tiene asignadas
+    Peticion "0..*" --> "0..*" ModuloCore : afecta
+    Peticion "1" *-- "0..*" ActividadCodigo
+    Peticion ..> TipoTrabajo
+    Peticion ..> Etapa
+    Desarrollador "1" --> "0..*" IndicadorCarga : se mide en
+    IndicadorCarga ..> Umbral : se compara con
+    IndicadorCarga "1" --> "0..*" Alerta : genera
+    RegistroNoReconocido "0..*" --> "0..1" Peticion : se asigna a
