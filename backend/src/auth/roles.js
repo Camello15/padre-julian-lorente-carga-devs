@@ -1,4 +1,4 @@
-/** Roles del sistema (diccionario: PMO, Técnico, Administrativo). */
+/** Roles del sistema (glosario: PMO, Técnico, Administrativo, Administrador TI). */
 export const Rol = Object.freeze({
   PMO: Object.freeze({
     clave: 'PMO',
@@ -15,6 +15,13 @@ export const Rol = Object.freeze({
   ADMINISTRATIVO: Object.freeze({
     clave: 'ADMINISTRATIVO',
     nombre: 'Administrativo',
+    permisos: Object.freeze(['ver:todos']),
+    soloPropios: false,
+  }),
+  // Único rol que configura el Umbral (CU-10) y revisa registros no reconocidos (CU-11).
+  ADMINISTRADOR_TI: Object.freeze({
+    clave: 'ADMINISTRADOR_TI',
+    nombre: 'Administrador TI',
     permisos: Object.freeze(['ver:todos', 'configurar']),
     soloPropios: false,
   }),

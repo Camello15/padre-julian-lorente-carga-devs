@@ -5,22 +5,29 @@ import { ServicioSesiones } from './auth/sso-mock.js';
 import { config } from './config.js';
 import { crearConectores } from './conectores/index.js';
 import { AlmacenMemoria } from './datos/almacen.js';
+import { AlmacenPostgres } from './datos/almacen-postgres.js';
 import { RepositorioSincronizacionPostgres } from './datos/RepositorioSincronizacionPostgres.js';
 import { cerrarAplicacion, crearSeguimientoSincronizacion, iniciarProgramador } from './sincronizacion/programador.js';
 import { Sincronizacion } from './sincronizacion/Sincronizacion.js';
 
-// Catálogo de Desarrolladores con su usuario en cada Fuente (mapeo de identidades).
-// TODO (Cristina): mover a la tabla desarrollador de PostgreSQL.
-const desarrolladores = JSON.parse(readFileSync(new URL('../mocks/desarrolladores.json', import.meta.url), 'utf8'));
+const leerMock = (archivo) => JSON.parse(readFileSync(new URL(`../mocks/${archivo}`, import.meta.url), 'utf8'));
 
-const almacen = new AlmacenMemoria();
-const conectores = crearConectores();
+// Catálogo de Desarrolladores con su usuario en cada Fuente (mapeo de identidades).
+// Con PostgreSQL se copia a la tabla desarrollador al arrancar.
+const desarrolladores = leerMock('desarrolladores.json');
+
+// Con DATABASE_URL: Integración (sincronización, fallos, snapshots) se guarda con RepositorioSincronizacionPostgres
+// y Datos y alertas con AlmacenPostgres. Ambos comparten el pool, que se cierra una sola vez en cerrarAplicacion.
+// Sin DATABASE_URL todo queda en memoria.
 const pool = config.databaseUrl ? new Pool({ connectionString: config.databaseUrl }) : null;
+const almacen = pool ? new AlmacenPostgres({ pool }) : new AlmacenMemoria();
+const conectores = crearConectores();
 const persistencia = pool ? new RepositorioSincronizacionPostgres(pool) : null;
 
 if (persistencia) {
   try {
     await persistencia.recuperarSincronizacionesAbandonadas();
+    await almacen.inicializar({ desarrolladores, usuarios: leerMock('usuarios-sso.json'), umbral: config.umbral });
     const snapshots = await persistencia.cargarSnapshots();
     for (const snapshot of snapshots) {
       almacen.rehidratarSnapshotFuente(snapshot.nombre, snapshot.datos, snapshot.fecha, snapshot.cursor);
@@ -29,10 +36,13 @@ if (persistencia) {
         conector?.rehidratarMetadatos(snapshot.datos, snapshot.metadatos);
       }
     }
-  } catch {
+  } catch (error) {
     await persistencia.cerrar().catch(() => {});
-    throw new Error('PostgreSQL no está disponible o sus snapshots iniciales son inválidos; no se iniciará sin persistencia.');
+    throw new Error('PostgreSQL no está disponible o sus datos iniciales son inválidos; no se iniciará sin persistencia.', { cause: error });
   }
+  console.info(`[almacén] PostgreSQL conectado (umbral vigente: ${config.umbral.maxPeticiones})`);
+} else {
+  console.info('[almacén] en memoria: define DATABASE_URL para usar PostgreSQL');
 }
 
 const sincronizacion = new Sincronizacion({

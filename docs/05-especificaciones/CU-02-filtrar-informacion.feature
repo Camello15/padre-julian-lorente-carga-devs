@@ -1,7 +1,7 @@
 # language: es
 # Responsable: Camilo. Requisitos: RF-11. Incluye CU-01.
 Característica: CU-02 Filtrar información
-  Como PMO o usuario
+  Como usuario con rol PMO, Técnico, Administrativo o Administrador TI
   Quiero filtrar por desarrollador, tipo de trabajo, proyecto, módulo del core y fechas
   Para ver solo las peticiones que me interesan
 

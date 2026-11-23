@@ -1,7 +1,7 @@
 # language: es
 # Responsable: Bryan. Requisitos: RNF-01. Extiende CU-05.
 Característica: CU-06 Registrar fallo de fuente
-  Como programador de tareas
+  Como Programador de tareas (cron)
   Quiero registrar una fuente que no pudo leerse después de tres intentos
   Para continuar la sincronización con los últimos datos exitosos disponibles en el almacén en memoria
 

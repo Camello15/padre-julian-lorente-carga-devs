@@ -21,8 +21,8 @@ El área de TI de la cooperativa reparte su trabajo entre RedMine, GitLab, GLPI 
 ├── backend/             Node.js + Express: API, conectores y sincronización
 │   ├── src/conectores/      Conector (abstracta) y un conector por fuente
 │   ├── src/sincronizacion/  cron cada 15 min, 3 reintentos por fuente, cruce por código
-│   ├── src/datos/           avance por etapa, carga, umbral, filtros, alertas
-│   ├── src/auth/            SSO simulado y roles (PMO, Técnico, Administrativo)
+│   ├── src/datos/           avance por etapa, carga, umbral, filtros, alertas, almacén (memoria o PostgreSQL)
+│   ├── src/auth/            SSO simulado y roles (PMO, Técnico, Administrativo, Administrador TI)
 │   └── mocks/               datos de prueba de las cuatro fuentes
 ├── database/schema.sql  esquema PostgreSQL basado en el diagrama de clases
 ├── docs/                contexto, requisitos, casos de uso, escenarios, diagramas, glosario
@@ -45,7 +45,7 @@ npm run dev
 - Web: http://localhost:5173
 - API: http://localhost:3000/api/salud
 
-En la pantalla de ingreso elige un **rol de prueba** (PMO, Técnico o Administrativo) y pulsa *Ingresar con SSO de la cooperativa*. El rol Técnico entra como "Andrea Torres" y solo ve su propia carga.
+En la pantalla de ingreso elige un **rol de prueba** (PMO, Técnico, Administrativo o Administrador TI) y pulsa *Ingresar con SSO de la cooperativa*. El rol Técnico entra como "Andrea Torres" y solo ve su propia carga. Solo el Administrador TI ve el panel para cambiar el umbral y revisar los registros no reconocidos.
 
 No hace falta un archivo `.env` para empezar. Si quieres cambiar algo (umbral, porcentajes de avance, simular la caída de una fuente), copia `.env.example` a `.env`.
 
@@ -63,22 +63,71 @@ Abre http://localhost:5173 en Chrome. ChromeOS reenvía automáticamente los pue
 | `npm run test:cobertura` | Pruebas con reporte de cobertura (lcov) |
 | `npm run build` | Build de producción del frontend |
 
-### Con Docker
+### Con Docker (recomendado para evaluar)
+
+Requisitos: Docker con Docker Compose v2. No hace falta Node.js ni un archivo `.env`.
 
 ```bash
-cp .env.example .env      # define POSTGRES_PASSWORD
+git clone https://github.com/Camello15/padre-julian-lorente-carga-devs.git
+cd padre-julian-lorente-carga-devs
 docker compose up --build
 ```
 
-Web en http://localhost:8080, API en http://localhost:3000. PostgreSQL arranca con `database/schema.sql`; el backend conserva el almacén en memoria como caché y, cuando `DATABASE_URL` está configurada, PostgreSQL es obligatorio para persistir ejecuciones, fallos, snapshots y cursores.
+| Servicio | URL | Qué es |
+|---|---|---|
+| frontend | http://localhost:8080 | Dashboard (nginx; reenvía `/api` al backend) |
+| backend | http://localhost:3000/api/salud | API; debe responder `{"estado":"ok"}` |
+| postgres | `localhost:5432` (solo desde tu equipo) | Base `carga_devs`, usuario `carga_devs`, contraseña `carga_devs_local` |
 
-Si el volumen de PostgreSQL ya estaba inicializado antes de añadir `snapshot_fuente`, aplica la migración antes de iniciar el backend:
+Al crear la base, PostgreSQL ejecuta `database/schema.sql` y el backend se conecta solo (`DATABASE_URL` está definida en `docker-compose.yml`). Al arrancar, el backend hace la primera sincronización con los datos de prueba. Ver [Persistencia](#persistencia).
+
+Para cambiar la contraseña de la base, el umbral u otras variables, copia `.env.example` a `.env` y edítalo antes de levantar. Para detener todo: `docker compose down` (conserva los datos) o `docker compose down -v` (borra también la base).
+
+> **¿Ya habías levantado Docker antes de esta versión?** `schema.sql` solo se ejecuta cuando se crea el volumen de la base, así que tu base tiene el esquema viejo. Elige una opción:
+>
+> **A. Borrar la base y empezar de cero** (se pierden los datos de prueba guardados):
+>
+> ```bash
+> docker compose down -v
+> docker compose up --build
+> ```
+>
+> **B. Conservar la base y aplicar las migraciones** en orden, antes de iniciar el backend. No eliminan ni recrean tablas:
+>
+> ```bash
+> docker compose up -d postgres
+> docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < database/migrations/001-snapshot-fuente.sql
+> docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < database/migrations/002-persistencia-datos.sql
+> docker compose up --build
+> ```
+
+## Persistencia
+
+| `DATABASE_URL` | Dónde se guardan los datos |
+|---|---|
+| vacía (por defecto en `npm run dev`) | En memoria (`AlmacenMemoria`). Se pierden al reiniciar. |
+| definida (Docker la define sola) | En PostgreSQL. Es obligatorio: si no está disponible, el backend no arranca. |
+
+Con PostgreSQL, dos componentes comparten el mismo pool de conexiones. La memoria sigue como caché de lectura, así que las rutas no cambian.
+
+| Componente | Módulo | Tablas que escribe |
+|---|---|---|
+| `RepositorioSincronizacionPostgres` | Integración | `sincronizacion`, `registro_fallo`, `snapshot_fuente` (datos y cursor de cada fuente) |
+| `AlmacenPostgres` | Datos y alertas | `desarrollador`, `usuario`, `proyecto`, `peticion`, `modulo_core`, `peticion_modulo`, `actividad_codigo`, `indicador_carga`, `alerta`, `umbral`, `registro_no_reconocido` |
+
+Al arrancar se recuperan el umbral configurado por el Administrador TI, los snapshots y cursores de cada fuente (RNF-01), las revisiones de registros no reconocidos, el estado de la última sincronización y las alertas ya enviadas a Rocket Chat. Con `USAR_MOCKS=true` (por defecto) los snapshots no se guardan, porque los datos de prueba se leen de nuevo en cada sincronización. El SSO sigue simulado.
+
+Para usar PostgreSQL con `npm run dev`, levanta solo la base (`docker compose up -d postgres`) y en `.env` pon `DATABASE_URL=postgres://carga_devs:carga_devs_local@localhost:5432/carga_devs`.
+
+### Pruebas de integración con PostgreSQL
+
+`backend/test/almacen-postgres.test.js` se omite si no existe `TEST_DATABASE_URL`. Cada ejecución crea un schema temporal con `database/schema.sql` y lo borra al terminar. En el CI corren siempre contra un servicio de PostgreSQL.
 
 ```bash
-docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < database/migrations/001-snapshot-fuente.sql
+docker run -d --rm --name pg-pruebas -e POSTGRES_PASSWORD=prueba -p 55432:5432 postgres:17-alpine
+TEST_DATABASE_URL=postgres://postgres:prueba@localhost:55432/postgres npm test
+docker stop pg-pruebas
 ```
-
-La migración no elimina ni recrea tablas existentes. En una base nueva, `database/schema.sql` crea la tabla automáticamente.
 
 ## API
 
@@ -86,12 +135,15 @@ Todas las rutas, salvo `/api/salud` y `/api/auth/login`, exigen la cabecera `Aut
 
 | Método y ruta | Descripción |
 |---|---|
-| `POST /api/auth/login` | SSO simulado. Cuerpo: `{ "rol": "PMO" \| "TECNICO" \| "ADMINISTRATIVO" }` |
+| `POST /api/auth/login` | SSO simulado. Cuerpo: `{ "rol": "PMO" \| "TECNICO" \| "ADMINISTRATIVO" \| "ADMINISTRADOR_TI" }` |
 | `GET /api/carga` | Indicadores de carga por desarrollador y resumen |
 | `GET /api/peticiones` | Peticiones con su etapa y avance |
 | `GET /api/alertas` | Alertas por superar el umbral |
 | `GET /api/sincronizacion/estado` | Última sincronización y estado de cada fuente |
 | `GET /api/catalogos` | Opciones de los filtros |
+| `PUT /api/umbral` | Cambia el umbral (`{ "maxPeticiones": 6 }`). Solo Administrador TI |
+| `GET /api/registros-no-reconocidos` | Registros pendientes de revisión (`?todos=true` incluye los revisados). Solo Administrador TI |
+| `PATCH /api/registros-no-reconocidos/:id` | Marca un registro como revisado (`{ "peticionCodigo": "POA-001" }` opcional). Solo Administrador TI |
 
 `/api/carga` y `/api/peticiones` aceptan los filtros de RF-11: `desarrollador`, `tipo` (`POA`, `REC`, `INICIATIVA`, `INCIDENTE`), `proyecto`, `modulo`, `desde` y `hasta` (`AAAA-MM-DD`). Con el rol Técnico, el filtro de desarrollador siempre es el propio.
 

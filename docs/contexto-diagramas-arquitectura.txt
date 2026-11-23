@@ -1,0 +1,899 @@
+================================================================================
+ CONTEXTO PARA DIAGRAMAS Y ARQUITECTURA
+ padre-julian-lorente-carga-devs  (Reto 2 COAC Padre Julian Lorente - UTPL)
+================================================================================
+
+QUE ES ESTE ARCHIVO
+  Guia unica de nombres, responsabilidades, relaciones y flujos para dibujar a
+  mano los entregables de la rubrica. Todo sale del codigo de la rama develop
+  (incluye el PR #24 de Bryan y la persistencia PostgreSQL de Datos y alertas).
+  No contiene diagramas: solo los datos para dibujarlos.
+
+REGLAS PARA DIBUJAR
+  R1. Usar los nombres EXACTOS de este archivo. Si un nombre no aparece aqui,
+      no existe en el sistema.
+  R2. Clases en PascalCase sin tildes (Peticion, RegistroFallo).
+      Atributos y metodos en camelCase (desarrolladorId, calcularAvance()).
+      Tablas y columnas en snake_case (registro_no_reconocido, desarrollador_id).
+      Textos para el usuario con tildes ("Peticion" en codigo, "Petición" en pantalla).
+  R3. Se dice "Peticion", nunca "tarea" ni "ticket" (GLPI llama "ticket" a sus
+      incidentes, pero en el sistema se convierten en Peticion de tipo INCIDENTE).
+  R4. Actores (siempre con estos nombres):
+        PMO | Técnico | Administrativo | Administrador TI
+        Programador de tareas (cron) | SSO de la cooperativa
+        Fuentes (RedMine, GitLab, GLPI, Rocket Chat)
+  R5. Modulos del equipo (carriles / paquetes logicos):
+        Usuario web y seguridad (Camilo) | Integracion (Bryan) | Datos y alertas (Cristina)
+  R6. Lo que esta PENDIENTE se dibuja con la nota "pendiente" o estereotipo
+      <<pendiente>>: CU-04 Exportar reporte (no hay ruta /api/reportes),
+      SSO real (hoy es simulado), persistencia de Sesion y Reporte en BD.
+
+REFERENCIAS EN EL REPO
+  docs/02-requisitos.md        RF-01..RF-13, RNF-01..RNF-06
+  docs/04-casos-de-uso.md      fichas CU-01..CU-11
+  docs/05-especificaciones/    escenarios Gherkin por CU
+  docs/06-diagramas.md         diccionario 6.0 y diagramas Mermaid ya validados
+  database/schema.sql          esquema PostgreSQL (18 tablas)
+  database/migrations/         001-snapshot-fuente.sql, 002-persistencia-datos.sql
+
+
+================================================================================
+ 1. CADENA DE VALOR
+================================================================================
+
+Modelo: cadena de valor de Porter adaptada a una cooperativa de ahorro y credito.
+Organizacion: Cooperativa de Ahorro y Credito Padre Julian Lorente (COAC PJL),
+Loja, Ecuador. Sector financiero.
+
+ACTIVIDADES PRIMARIAS (de izquierda a derecha, terminan en "Margen")
+  P1. Captacion de ahorros
+  P2. Colocacion de creditos
+  P3. Servicios financieros
+  P4. Promocion y canales
+  P5. Atencion al socio
+
+ACTIVIDADES DE APOYO (franja superior, sostienen a todas las primarias)
+  A1. Infraestructura
+  A2. Talento humano
+  A3. Desarrollo tecnologico   <== AQUI SE UBICA EL SISTEMA (resaltar)
+  A4. Abastecimiento
+
+COMO IMPACTA EL SISTEMA (texto para la nota del diagrama)
+  - Area de TI: 1 PMO + 7 desarrolladores.
+  - TI desarrolla y mantiene el software que soporta las primarias (modulos del
+    core financiero). Ejemplos supuestos, por validar con la cooperativa:
+    Captaciones, Creditos, Cajas, Canales digitales, Contabilidad, Reportes
+    regulatorios. Son los nombres de los datos de prueba (backend/mocks), no la
+    lista real del core.
+  - Hoy el trabajo esta repartido en 4 herramientas sin conexion: RedMine
+    (peticiones POA/REC/Iniciativa/Incidente), GitLab (codigo, Gitflow), GLPI
+    (mesa de ayuda) y Rocket Chat (chat y alertas). El cruce es manual.
+  - El sistema centraliza la carga y el avance por desarrollador. La PMO reparte
+    mejor el trabajo de Desarrollo tecnologico, lo que reduce retrasos en los
+    cambios que necesitan P1..P5 (indirectamente mejora Atencion al socio).
+
+Flechas sugeridas:
+  A3 --(software y cambios del core)--> P1, P2, P3, P4, P5
+  P5 --> Margen
+
+
+================================================================================
+ 2. FLUJO DE VALOR (VALUE STREAM)
+================================================================================
+
+Disparador: aparece trabajo nuevo para TI.
+Valor entregado: la PMO y TI saben a tiempo quien esta sobrecargado y pueden
+redistribuir. Latencia maxima del dato: 15 min (SYNC_CRON = */15 * * * *).
+
+ETAPA | QUIEN / DONDE                          | QUE PASA                                           | NOMBRE EN EL SISTEMA
+------+----------------------------------------+----------------------------------------------------+-----------------------------------------
+E1    | PMO / usuario de negocio -> RedMine    | Se registra la Peticion con Codigo, tipo y Etapa   | Peticion (codigo, tipo, etapa) - RF-02
+      |                                        | (POA-AAAA-NNN, REC-AAAA-NNN, INC-AAAA-NNN,          |
+      |                                        |  iniciativa.ti.NNN)                                 |
+E2    | Socio/empleado -> GLPI                 | Se reporta un incidente con el codigo en el titulo | ticket GLPI -> Peticion INCIDENTE - RF-04
+E3    | Desarrollador -> GitLab                | Trabaja en una rama que contiene el codigo          | ActividadCodigo (commit, merge_request,
+      |                                        | (feature/POA-2026-001-...)                          |  pipeline) - RF-03
+E4    | Equipo -> Rocket Chat                  | Conversa mencionando el codigo                      | notificaciones - RF-05
+E5    | Programador de tareas (cron)           | Lee las 4 fuentes cada 15 min, 3 reintentos         | CU-05 Sincronizar fuentes, CU-06
+E6    | Integracion (normalizador)             | Cruza por codigo, sin duplicados                    | CU-07 Cruzar datos por codigo
+      |                                        | Lo no cruzado -> revision                           |  RegistroNoReconocido
+E7    | Datos y alertas (calcularCarga)        | Mide carga (peticiones abiertas) y avance por etapa | CU-08 -> IndicadorCarga
+      |                                        | (10/40/70/90/100 %)                                 |
+E8    | Datos y alertas                        | DETECCION DE DESVIO: peticionesAbiertas >           | IndicadorCarga.superaUmbral = true
+      |                                        | Umbral.maxPeticiones (por defecto 6)                |
+E9    | Datos y alertas -> Rocket Chat         | ALERTA en pantalla y en el canal                    | CU-09 -> Alerta; canal
+      |                                        | ROCKETCHAT_CANAL_ALERTAS (#ti-alertas)              |  ROCKETCHAT_CANAL_ALERTAS
+E10   | PMO / Técnico / Administrativo /       | Consulta, filtra y decide (redistribuir trabajo)    | CU-01, CU-02, CU-03, CU-04 (pendiente)
+      |  Administrador TI -> Dashboard          |                                                    |
+E11   | Administrador TI                       | Ajusta el umbral y revisa registros no cruzados     | CU-10, CU-11
+      |                                        | (retroalimenta E6 y E8)                             |
+
+Desperdicios que elimina (para la nota del flujo de valor):
+  - Cruce manual entre 4 herramientas.
+  - Descubrir la sobrecarga tarde (antes: sin alerta; ahora: <= 15 min).
+  - Duplicados (un incidente de GLPI y su peticion de RedMine se cuentan una vez).
+
+
+================================================================================
+ 3. MAPA DE CAPACIDADES
+================================================================================
+
+Nivel 1 = dominio. Nivel 2 = capacidad. Entre corchetes: donde vive en el codigo.
+
+D1. INTEGRACION
+  C1.1 Lectura de RedMine (peticiones y etapa, incremental)  [conectores/ConectorRedmine.js] RF-02
+  C1.2 Lectura de GitLab (commits, MR, pipelines)            [conectores/ConectorGitlab.js]  RF-03
+  C1.3 Lectura de GLPI (incidentes)                          [conectores/ConectorGlpi.js]    RF-04
+  C1.4 Lectura de Rocket Chat (canales y grupos)             [conectores/ConectorRocketChat.js] RF-05
+  C1.5 Sincronizacion programada cada 15 min                 [sincronizacion/programador.js] RNF-01
+  C1.6 Tolerancia a fallos (3 reintentos + ultimos datos)    [sincronizacion/Sincronizacion.js] RNF-01
+  C1.7 Lectura incremental con cursor y snapshot             [AlmacenMemoria.cursorFuente, snapshot_fuente]
+  C1.10 Persistencia de la sincronizacion en PostgreSQL      [datos/RepositorioSincronizacionPostgres.js]
+  C1.8 Cruce por codigo y deduplicacion                      [sincronizacion/normalizador.js] RF-06, RF-07, RF-09
+  C1.9 Extensibilidad por conector (nueva fuente = 1 clase)  [conectores/Conector.js, conectores/index.js] RNF-04
+
+D2. DATOS Y ALERTAS
+  C2.1 Calculo de carga por desarrollador y tipo             [datos/carga.js calcularCarga] RF-10
+  C2.2 Estimacion de avance por etapa (configurable)         [datos/avance.js, AVANCE_POR_ETAPA] RF-08
+  C2.3 Comparacion de la carga con el umbral                 [IndicadorCarga.superaUmbral] RF-12
+  C2.4 Generacion y envio de alertas sin duplicados          [datos/alertas.js] RF-12
+  C2.5 Persistencia de datos y alertas en PostgreSQL         [datos/almacen-postgres.js AlmacenPostgres]
+  C2.6 Deteccion de registros no reconocidos                 [RegistroNoReconocido] RF-06
+
+D3. SEGURIDAD / SSO
+  C3.1 Autenticacion centralizada (SSO, hoy simulado)        [auth/sso-mock.js ServicioSesiones] RF-01
+  C3.2 Gestion de sesion con expiracion (480 min)            [ServicioSesiones, SSO_DURACION_SESION_MIN]
+  C3.3 Autorizacion por rol y permisos                       [auth/roles.js, auth/middleware.js] RNF-02
+  C3.4 Restriccion "solo propios" para Técnico               [datos/filtro.js aplicarRestriccionRol]
+  C3.5 Credenciales solo en variables de entorno             [config.js, .env.example] RNF-02
+
+D4. ADMINISTRACION  (actor: Administrador TI, permiso configurar)
+  C4.1 Configurar umbral                                     CU-10 [PUT /api/umbral] RF-12
+  C4.2 Revisar registros no reconocidos                      CU-11 [GET y PATCH /api/registros-no-reconocidos] RF-06
+  C4.3 Monitorear el estado de la sincronizacion             GET /api/sincronizacion/estado
+
+D5. REPORTES Y CONSULTA
+  C5.1 Dashboard de carga y avance                           [frontend/src/paginas/Dashboard.jsx] RF-07..RF-10
+  C5.2 Filtros (desarrollador, tipo, proyecto, modulo, fechas) [PanelFiltros.jsx, filtro.js] RF-11
+  C5.3 Visualizacion grafica de carga                        [GraficoCarga.jsx, Chart.js] RF-10
+  C5.4 Panel de alertas                                      [PanelAlertas.jsx] RF-12
+  C5.5 Exportar a Excel o PDF                                <<pendiente>> CU-04, RF-13
+
+
+================================================================================
+ 4. DIAGRAMA DE CASOS DE USO
+================================================================================
+
+LIMITE DEL SISTEMA: "Dashboard de carga de desarrolladores"
+
+ACTORES
+  Principales (a la izquierda):
+    PMO                 rol PMO              permisos: ver:todos, exportar
+    Técnico             rol TECNICO          permisos: ver:propios (solo su carga)
+    Administrativo      rol ADMINISTRATIVO   permisos: ver:todos
+    Administrador TI    rol ADMINISTRADOR_TI permisos: ver:todos, configurar
+    Programador de tareas (cron)
+  Secundarios (a la derecha):
+    SSO de la cooperativa
+    Fuentes (RedMine, GitLab, GLPI, Rocket Chat)
+  Generalizacion opcional: un actor abstracto "Usuario de la cooperativa" del
+  que heredan PMO, Técnico, Administrativo y Administrador TI.
+
+CASOS DE USO (nombre exacto)                       Modulo                    Responsable
+  CU-01 Iniciar sesión con SSO                     Usuario web y seguridad   Camilo
+  CU-02 Filtrar información                        Usuario web y seguridad   Camilo
+  CU-03 Consultar dashboard de carga y avance      Usuario web y seguridad   Camilo
+  CU-04 Exportar reporte  <<pendiente>>            Usuario web y seguridad   Camilo
+  CU-05 Sincronizar fuentes                        Integración               Bryan
+  CU-06 Registrar fallo de fuente                  Integración               Bryan
+  CU-07 Cruzar datos por código                    Integración               Bryan
+  CU-08 Calcular carga y avance                    Datos y alertas           Cristina
+  CU-09 Enviar alerta                              Datos y alertas           Cristina
+  CU-10 Configurar umbral                          Datos y alertas           Cristina
+  CU-11 Revisar registros no reconocidos           Datos y alertas           Cristina
+
+ASOCIACIONES ACTOR -> CASO DE USO
+  PMO, Técnico, Administrativo, Administrador TI -> CU-03
+  PMO                                            -> CU-04
+  Administrador TI                               -> CU-10, CU-11
+  Programador de tareas (cron)                   -> CU-05
+  CU-01 --- SSO de la cooperativa
+  CU-05 --- Fuentes
+
+RELACIONES (la flecha va del caso que incluye/extiende al otro)
+  CU-02 Filtrar información          --<<include>>--> CU-01 Iniciar sesión con SSO
+  CU-03 Consultar dashboard          --<<include>>--> CU-01 Iniciar sesión con SSO
+  CU-04 Exportar reporte             --<<include>>--> CU-01 Iniciar sesión con SSO
+  CU-03 Consultar dashboard          --<<include>>--> CU-02 Filtrar información
+  CU-04 Exportar reporte             --<<extend>>---> CU-03 Consultar dashboard
+  CU-05 Sincronizar fuentes          --<<include>>--> CU-07 Cruzar datos por código
+  CU-05 Sincronizar fuentes          --<<include>>--> CU-08 Calcular carga y avance
+  CU-06 Registrar fallo de fuente    --<<extend>>---> CU-05 Sincronizar fuentes
+  CU-09 Enviar alerta                --<<extend>>---> CU-08 Calcular carga y avance
+  (CU-10 y CU-11 tambien requieren sesion: se puede dibujar <<include>> a CU-01;
+   en docs/04-casos-de-uso.md se expresa como precondicion.)
+
+Puntos de extension:
+  CU-03: "PMO pulsa Exportar"                              -> CU-04
+  CU-05: "una Fuente falla tras 3 intentos"                -> CU-06
+  CU-08: "peticionesAbiertas > Umbral.maxPeticiones"       -> CU-09
+
+
+================================================================================
+ 5. DIAGRAMA DE CLASES
+================================================================================
+
+Convencion: "-" atributo, "+" metodo. En Integracion los atributos son publicos
+(+) porque asi se usan en el codigo. Estereotipos:
+  <<estructura>>            objeto JS plano, no es clase (EstadoSincronizacion, RegistroFallo)
+  <<objeto_configuracion>>  Fuente
+  <<conceptual>>            existe como objeto/tabla pero no como clase JS
+                            (Usuario, Sesion, Filtro, Reporte)
+  <<enumeration>>           TipoTrabajo, Etapa
+  <<abstract>>              Conector
+
+--- PAQUETE: Usuario web y seguridad ---------------------------------------
+Usuario <<conceptual>>            [mocks/usuarios-sso.json, tabla usuario]
+  - id: String                    (u-pmo, u-tec, u-adm, u-ati)
+  - idSso: String
+  - nombre: String
+  - correo: String
+  - desarrolladorId: String       (solo rol Técnico)
+  - rol: Rol
+Rol                               [auth/roles.js, tabla rol]
+  - clave: String                 (PMO | TECNICO | ADMINISTRATIVO | ADMINISTRADOR_TI)
+  - nombre: String                (PMO | Técnico | Administrativo | Administrador TI)
+  - permisos: List<String>        (ver:todos | ver:propios | exportar | configurar)
+  - soloPropios: bool
+  funciones del modulo: obtenerRol(clave): Rol, tienePermiso(rol, permiso): bool
+Sesion <<conceptual>>             [objeto en ServicioSesiones, tabla sesion sin uso aun]
+  - token: String                 (BD: token_hash)
+  - inicio: DateTime
+  - expira: DateTime
+  - usuario: Usuario
+ServicioSesiones                  [auth/sso-mock.js]
+  - duracionMs: int
+  - sesiones: Map<String, Sesion>
+  + iniciarSesionMock(claveRol: String): Sesion
+  + obtenerSesion(token: String): Sesion | null
+  + cerrarSesion(token: String): void
+Filtro <<conceptual>>             [datos/filtro.js; JSON en reporte.filtro]
+  - desarrolladorId: String
+  - proyectoId: String
+  - tipo: TipoTrabajo
+  - moduloCore: String
+  - desde: Date (AAAA-MM-DD)
+  - hasta: Date (AAAA-MM-DD)
+  funciones: crearFiltro(query), aplicarRestriccionRol(filtro, usuario),
+             filtrarPeticiones(peticiones, filtro); excepcion FiltroInvalidoError
+Reporte <<conceptual>> <<pendiente>>   [tabla reporte, sin codigo aun]
+  - formato: String (xlsx | pdf)
+  - generadoEn: DateTime
+  - fechaUltimaSync: DateTime
+  + generarExcel(): File
+  + generarPdf(): File
+
+--- PAQUETE: Integracion (Bryan) ------------------------------------------
+Fuente <<objeto_configuracion>>   [conectores/index.js, tabla fuente]
+  + nombre: String                (redmine | gitlab | glpi | rocketchat)
+  + urlApi: String
+  + activa: bool
+Conector <<abstract>>             [conectores/Conector.js]
+  + fuente: Fuente
+  + Conector(fuente)
+  + leerDatos(desde): Promise<List>        (abstracto)
+  + leerMock(archivo): Promise<Object>
+ConectorRedmine   extends Conector   + leerDatos(desde): Promise<List>
+ConectorGitlab    extends Conector   + leerDatos(desde, desarrolladores): Promise<List>
+ConectorGlpi      extends Conector   + leerDatos(desde): Promise<List>
+ConectorRocketChat extends Conector  + leerDatos(desde): Promise<List>
+                                     + identidadMensaje(mensaje)
+                                     + exportarMetadatos(mensajes): List
+                                     + rehidratarMetadatos(mensajes, metadatos)
+Sincronizacion                    [sincronizacion/Sincronizacion.js]
+  + conectores: List<Conector>
+  + almacen: AlmacenMemoria
+  + desarrolladores: List<Desarrollador>
+  + umbral: Umbral
+  + reintentos: int               (3)
+  + esperaReintentoMs: int        (2000)
+  + reloj: Function
+  + persistencia: RepositorioSincronizacionPostgres | null
+  + modoMocks: bool
+  + enEjecucion: bool
+  + leerConReintentos(conector, desde, desarrolladores): Promise
+  + ejecutar(): Promise<EstadoSincronizacion | null>
+EstadoSincronizacion <<estructura>>
+  + estado: String                (pendiente | ok | parcial | fallida)
+  + inicio: String (ISO)
+  + fin: String (ISO)
+  + ultimaExitosa: String (ISO)
+  + fuentes: List<{nombre, estado(ok|con-datos-anteriores|sin-datos), intentos, registros, ultimaLecturaExitosa}>
+  + fallos: List<RegistroFallo>   (maximo 50)
+  + registrosNoReconocidos: int
+RegistroFallo <<estructura>>      [tabla registro_fallo]
+  + fuente: String
+  + fecha: String (ISO)
+  + intentos: int
+  + mensaje: String
+AlmacenMemoria                    [datos/almacen.js]
+  + ultimosDatosPorFuente: Map
+  + estadoSincronizacion: EstadoSincronizacion
+  + desarrolladores, proyectos, peticiones, indicadores, alertas,
+    registrosNoReconocidos, notificaciones, modulosConCambios: List
+  + guardarDatosFuente(nombreFuente, datos, fecha)
+  + combinarSnapshotFuente(nombreFuente, datos, {incremental}): List
+  + confirmarSnapshotFuente(nombreFuente, datos, fecha, cursor)
+  + rehidratarSnapshotFuente(nombreFuente, datos, fecha, cursor)
+  + cursorFuente(nombreFuente): String | null
+  + ultimosDatosFuente(nombreFuente)
+  + guardarResultado(resultado)
+  + listarRegistrosNoReconocidos({incluirRevisados}): List
+  + marcarRegistroNoReconocido(id, peticionCodigo): RegistroNoReconocido | null
+RepositorioSincronizacionPostgres [datos/RepositorioSincronizacionPostgres.js]
+  - pool: pg.Pool
+  + cargarSnapshots(): Promise<List>
+  + recuperarSincronizacionesAbandonadas(): Promise<int>
+  + crearSincronizacion(inicio): Promise<id>
+  + finalizarSincronizacion({id, fin, estado, fallos, snapshots}): Promise
+  + cerrar(): Promise
+
+--- PAQUETE: Datos y alertas (Cristina) -----------------------------------
+AlmacenPostgres extends AlmacenMemoria   [datos/almacen-postgres.js]
+  - pool: pg.Pool                 (compartido con RepositorioSincronizacionPostgres)
+  - idsFuente: Map
+  + inicializar({desarrolladores, usuarios, umbral}): Promise
+  + guardarResultado({sincronizacionId, ...resultado}): Promise
+  + guardarUmbral(umbral): Promise
+  + marcarRegistroNoReconocido(id, peticionCodigo): Promise
+  + cerrar(): Promise
+Desarrollador                     [datos/modelos.js, tabla desarrollador]
+  - id: String (d01..d07)
+  - nombre: String
+  - correo: String
+  - usuarioGitlab: String
+  - idRedmine: int
+  - usuarioGlpi: String
+Proyecto                          - codigo: String  - nombre: String
+ModuloCore                        - id: int  - nombre: String
+Peticion                          [datos/modelos.js, tabla peticion]
+  - codigo: String                (POA-2026-001, REC-2026-014, INC-2026-031, iniciativa.ti.001)
+  - titulo: String
+  - tipo: TipoTrabajo
+  - etapa: Etapa
+  - estado: String                (abierta | cerrada)
+  - desarrolladorId: String
+  - proyectoCodigo: String        (en la sincronizacion se llama proyectoId; BD proyecto_codigo)
+  - modulosCore: List<String>
+  - actividades: List<ActividadCodigo>
+  - fechaInicio: Date
+  - fechaFin: Date
+  + calcularAvance(): int
+ActividadCodigo                   - tipo: String (commit | merge_request | pipeline)
+                                  - rama: String  - idOrigen: String  - estado: String
+                                  - fecha: DateTime  - desarrolladorId: String
+IndicadorCarga                    - desarrolladorId: String  - nombre: String
+                                  - peticionesAbiertas: int  - porTipo: Map<TipoTrabajo,int>
+                                  - avancePromedio: int (0..100)  - superaUmbral: bool
+                                  - calculadoEn: DateTime
+Umbral                            - maxPeticiones: int (>= 1, por defecto 6)
+                                  - vigenteDesde: DateTime  - configuradoPor: String (id Usuario)
+                                  + actualizar(nuevoMaxPeticiones, usuarioId)
+Alerta                            - id: String  - desarrolladorId: String  - mensaje: String
+                                  - peticionesAbiertas: int  - umbral: int
+                                  - fecha: DateTime  - enviadaRocketChat: bool
+                                  + enviar(funcionEnvio)
+RegistroNoReconocido              - id: String (fuente:codigoOriginal[#n]; BD clave)
+                                  - codigoOriginal: String  - fuente: String
+                                  - motivo: String  - revisado: bool
+                                  - peticionAsignada: String  - detectadoEn: DateTime
+                                  + marcarRevisado(peticionCodigo)
+TipoTrabajo <<enumeration>>       POA, REC, INICIATIVA, INCIDENTE
+Etapa <<enumeration>>             ANALISIS, DESARROLLO, CERTIFICACION, DESPLIEGUE, ESTABILIZACION
+Funciones del modulo (dibujar como <<utility>> si la rubrica lo pide):
+  avance.js:   calcularAvance(etapa): int, avancePromedio(peticiones): int, cargarTablaAvance(json)
+  carga.js:    calcularCarga(peticiones, desarrolladores, umbral, calculadoEn): List<IndicadorCarga>
+  alertas.js:  generarAlertas(indicadores, umbral, fecha): List<Alerta>,
+               enviarAlertaRocketChat(alerta): Promise<Alerta>,
+               restaurarHistorialAlertas(enviadas), limpiarHistorialAlertas()
+  normalizador.js: extraerCodigo(texto): String | null, unificar(datosPorFuente, desarrolladores, detectadoEn)
+
+RELACIONES Y CARDINALIDADES (origen -> destino : nombre)
+  Usuario "0..*" --> "1" Rol : tiene
+  Usuario "1" --> "0..*" Sesion : abre
+  Usuario "0..1" --> "0..1" Desarrollador : es (rol Técnico)
+  Usuario "1" --> "0..*" Reporte : exporta                <<pendiente>>
+  Usuario "1" --> "0..*" Umbral : configura
+  Reporte "1" --> "1" Filtro : usa                         <<pendiente>>
+  ServicioSesiones "1" --> "0..*" Sesion : gestiona
+  Conector <|-- ConectorRedmine | ConectorGitlab | ConectorGlpi | ConectorRocketChat  (herencia)
+  Conector --> "1" Fuente : fuente (configuracion)
+  Sincronizacion --> "0..*" Conector : conectores
+  Sincronizacion --> "1" AlmacenMemoria : almacen
+  Sincronizacion --> "0..1" RepositorioSincronizacionPostgres : persistencia
+  AlmacenMemoria <|-- AlmacenPostgres  (herencia)
+  AlmacenMemoria "1" --> "1" EstadoSincronizacion : estadoSincronizacion
+  Sincronizacion ..> EstadoSincronizacion : crea y actualiza   (dependencia)
+  EstadoSincronizacion --> "0..50" RegistroFallo : fallos
+  Sincronizacion ..> RegistroFallo : crea                       (dependencia)
+  Sincronizacion "1" --> "0..*" RegistroNoReconocido : detecta
+  RegistroNoReconocido "0..*" ..> "1" Fuente : fuente
+  RegistroNoReconocido "0..*" --> "0..1" Peticion : se asigna a
+  Proyecto "1" o-- "0..*" Peticion : agrupa                     (agregacion)
+  Desarrollador "1" --> "0..*" Peticion : tiene asignadas
+  Peticion "0..*" --> "0..*" ModuloCore : afecta                 (BD: peticion_modulo)
+  Peticion "1" *-- "0..*" ActividadCodigo : se relaciona con     (composicion)
+  Peticion ..> TipoTrabajo, Peticion ..> Etapa
+  Sincronizacion "1" --> "0..*" IndicadorCarga : calcula
+  Desarrollador "1" --> "0..*" IndicadorCarga : se mide en
+  IndicadorCarga ..> Umbral : se compara con
+  IndicadorCarga "1" --> "0..*" Alerta : genera
+
+CAMBIOS AL INTEGRAR EL PR #24 DE BRYAN (para explicar en la exposicion)
+  - Nuevas: RepositorioSincronizacionPostgres, EstadoSincronizacion, metodos de
+    snapshot/cursor en AlmacenMemoria, metodos de metadatos en ConectorRocketChat,
+    Sincronizacion.persistencia y Sincronizacion.modoMocks.
+  - AlmacenPostgres deja de escribir sincronizacion/registro_fallo: los escribe el
+    repositorio de Bryan; AlmacenPostgres enlaza indicadores y registros al
+    sincronizacionId que recibe.
+  - La tabla lectura_fuente (nuestra) se elimino; se usa snapshot_fuente (Bryan).
+
+TABLAS (para el modelo entidad-relacion; detalle en docs/06-diagramas.md 6.5)
+  rol, usuario, sesion, reporte, fuente, sincronizacion, snapshot_fuente,
+  registro_fallo, proyecto, modulo_core, peticion, peticion_modulo,
+  actividad_codigo, desarrollador, indicador_carga, umbral, alerta,
+  registro_no_reconocido   (18 tablas; tipos ENUM: tipo_trabajo, etapa)
+
+
+================================================================================
+ 6. DIAGRAMAS DE SECUENCIA (uno por caso de uso)
+================================================================================
+
+Participantes (usar estos nombres como lineas de vida):
+  Actor .......................... PMO | Técnico | Administrativo | Administrador TI
+                                   | Programador de tareas (cron)
+  Frontend ....................... Login.jsx | App.jsx | Dashboard.jsx | PanelFiltros.jsx
+                                   | PanelAdministracionTI.jsx | api.js (pedir)
+  Proxy .......................... nginx (contenedor frontend) /api/ -> backend:3000
+  Backend ........................ app.js (Express) | requiereSesion | requierePermiso
+                                   | rutas/auth.js | rutas/datos.js | rutas/sincronizacion.js
+                                   | ServicioSesiones | Sincronizacion | Conector* | normalizador
+                                   | calcularCarga | alertas | AlmacenPostgres
+                                   | RepositorioSincronizacionPostgres
+  Datos/externos ................. PostgreSQL | RedMine | GitLab | GLPI | Rocket Chat | SSO
+Todas las rutas salvo /api/salud y /api/auth/login exigen
+  "Authorization: Bearer <token>" (requiereSesion). Sin sesion valida: 401.
+
+--- CU-01 Iniciar sesión con SSO -------------------------------------------
+ 1. Usuario -> Login.jsx: elige rol de prueba y pulsa "Ingresar con SSO de la cooperativa"
+ 2. Login.jsx -> api.js: iniciarSesion(rol)
+ 3. api.js -> nginx -> rutas/auth.js: POST /api/auth/login {rol}
+ 4. rutas/auth.js -> ServicioSesiones: iniciarSesionMock(rol)
+      (SSO real: redirigir al SSO de la cooperativa y validar su token <<pendiente>>)
+ 5. ServicioSesiones -> roles.js: obtenerRol(clave) -> Rol
+ 6. ServicioSesiones: crea Sesion {token, inicio, expira = inicio + 480 min, usuario}
+ 7. rutas/auth.js -> api.js: 201 {token, inicio, expira, usuario{id, nombre, correo, desarrolladorId, rol}}
+ 8. App.jsx: guarda la sesion en sessionStorage y muestra Dashboard.jsx
+ alt rol invalido: 400 "Elige un rol de prueba valido..."
+ alt SSO_MODO != mock: 501
+ alt cerrar sesion: App.jsx -> POST /api/auth/logout -> ServicioSesiones.cerrarSesion(token) -> 204
+ alt sesion expirada en cualquier ruta: 401 -> api.js lanza ErrorSesion
+     -> App.jsx vuelve a Login.jsx con "Tu sesión expiró. Vuelve a ingresar."
+
+--- CU-02 Filtrar información ----------------------------------------------
+ 1. Dashboard.jsx -> api.js: GET /api/catalogos
+ 2. rutas/datos.js -> AlmacenMemoria (cache): desarrolladores, proyectos, modulos -> 200
+ 3. Usuario -> PanelFiltros.jsx: elige desarrollador, tipo, proyecto, modulo, desde, hasta
+ 4. Dashboard.jsx: construirConsulta(filtros) -> GET /api/carga?... y GET /api/peticiones?...
+ 5. requiereSesion -> ServicioSesiones.obtenerSesion(token)
+ 6. rutas/datos.js -> filtro.js: crearFiltro(query) -> aplicarRestriccionRol(filtro, usuario)
+      (Técnico: desarrolladorId = su propio desarrollador)
+ 7. rutas/datos.js -> filtro.js: filtrarPeticiones(almacen.peticiones, filtro)
+ 8. rutas/datos.js -> api.js: 200 {filtro, peticiones} / {filtro, umbral, resumen, indicadores}
+ alt filtro invalido: FiltroInvalidoError -> 400
+ alt "Limpiar": PanelFiltros vuelve a FILTROS_VACIOS y se repite el paso 4
+
+--- CU-03 Consultar dashboard de carga y avance -----------------------------
+ 1. Usuario -> Dashboard.jsx: abre el dashboard
+ 2. Dashboard.jsx -> api.js: GET /api/catalogos y GET /api/alertas (una vez por sesion)
+ 3. Dashboard.jsx -> api.js: GET /api/carga{consulta} y GET /api/peticiones{consulta} (CU-02)
+ 4. rutas/datos.js -> calcularCarga(peticionesFiltradas, desarrolladoresVisibles, umbral)
+ 5. rutas/datos.js -> AlmacenMemoria.estadoSincronizacion (fin, estado)
+ 6. 200 {resumen{peticionesAbiertas, desarrolladoresSobreUmbral, ultimaSincronizacion,
+         estadoSincronizacion}, indicadores, modulosConCambios}
+ 7. Dashboard.jsx -> ResumenCarga, GraficoCarga, PanelAlertas, TablaPeticiones (RielEtapas)
+ Nota: las lecturas salen de la cache en memoria; PostgreSQL no se consulta en este flujo.
+
+--- CU-04 Exportar reporte  <<pendiente, Sprint 4>> ------------------------
+ 1. PMO -> Dashboard.jsx: pulsa "Exportar" (solo visible con permiso exportar)
+ 2. HOY: Dashboard.jsx muestra "La exportación a Excel y PDF llega en el Sprint 4."
+ PROPUESTO (dibujar con <<pendiente>>):
+ 3. api.js -> GET /api/reportes?formato=xlsx|pdf + filtros
+ 4. requierePermiso('exportar') -> 403 si no es PMO
+ 5. backend genera Reporte(formato, generadoEn, fechaUltimaSync) con filtrarPeticiones
+ 6. respuesta: archivo; el navegador lo descarga
+
+--- CU-05 Sincronizar fuentes ----------------------------------------------
+ 1. Programador de tareas (cron) -> programador.js: dispara cada */15 * * * *
+    (tambien una vez al arrancar, en index.js)
+ 2. programador.js -> Sincronizacion: ejecutar()   (si enEjecucion: devuelve null)
+ 3. Sincronizacion -> RepositorioSincronizacionPostgres: crearSincronizacion(inicio)
+      -> PostgreSQL: INSERT sincronizacion (estado 'en-curso') -> id
+ 4. par por cada Fuente:
+      Sincronizacion -> AlmacenMemoria: cursorFuente(nombre)
+      Sincronizacion -> Conector*: leerConReintentos(conector, desde) (hasta 3 intentos)
+        ConectorRedmine   -> RedMine:     GET {REDMINE_URL}/issues.json?status_id=*&limit&offset[&updated_on>=]
+                                          cabecera X-Redmine-API-Key
+        ConectorGitlab    -> GitLab:      GET /api/v4/projects/{id}/repository/commits,
+                                          /merge_requests, /pipelines   cabecera PRIVATE-TOKEN
+        ConectorGlpi      -> GLPI:        GET apirest.php/initSession -> /Ticket o /search/Ticket
+                                          -> /killSession   cabeceras App-Token, Session-Token
+        ConectorRocketChat-> Rocket Chat: GET /api/v1/rooms.info, channels.history | groups.history
+                                          cabeceras X-Auth-Token, X-User-Id
+        (USAR_MOCKS=true: leerMock('redmine.json' | 'gitlab.json' | 'glpi.json' | 'rocketchat.json'))
+      Sincronizacion -> AlmacenMemoria: combinarSnapshotFuente(nombre, datos, {incremental})
+      alt falla 3 veces -> CU-06
+ 5. Sincronizacion -> normalizador: unificar(datosPorFuente, desarrolladores)   (CU-07)
+ 6. Sincronizacion -> calcularCarga(...)                                          (CU-08)
+ 7. Sincronizacion -> alertas: generarAlertas(indicadores, umbral)
+ 8. Sincronizacion -> RepositorioSincronizacionPostgres: finalizarSincronizacion(
+      {id, fin, estado, fallos, snapshots}) -> PostgreSQL (1 transaccion):
+      INSERT registro_fallo, UPDATE sincronizacion, UPSERT snapshot_fuente
+ 9. Sincronizacion -> alertas: enviarAlertaRocketChat(alerta)                     (CU-09)
+10. Sincronizacion -> AlmacenPostgres: guardarResultado({sincronizacionId, peticiones,
+      indicadores, alertas, registrosNoReconocidos, estadoSincronizacion, ...})
+      -> PostgreSQL (1 transaccion): UPSERT proyecto, modulo_core, peticion,
+         peticion_modulo, actividad_codigo; INSERT indicador_carga, alerta;
+         UPSERT registro_no_reconocido
+11. Sincronizacion -> AlmacenMemoria: confirmarSnapshotFuente / guardarDatosFuente
+12. resultado consultable: GET /api/sincronizacion/estado (cualquier rol con sesion)
+ estado final: ok (ninguna fallo) | parcial (alguna) | fallida (todas)
+
+--- CU-06 Registrar fallo de fuente ----------------------------------------
+ 1. Conector* -> Sincronizacion: error en el intento 1, 2 y 3 (espera SYNC_ESPERA_REINTENTO_MS)
+ 2. Sincronizacion: crea RegistroFallo {fuente, fecha, intentos: 3, mensaje}
+ 3. Sincronizacion -> AlmacenMemoria: ultimosDatosFuente(nombre)
+ 4. alt hay datos: estado de la fuente 'con-datos-anteriores', se usan esos datos
+    alt no hay:    estado 'sin-datos', lista vacia
+ 5. (en el paso 8 de CU-05) RepositorioSincronizacionPostgres -> PostgreSQL: INSERT registro_fallo
+ 6. EstadoSincronizacion.fallos (maximo 50) -> GET /api/sincronizacion/estado
+
+--- CU-07 Cruzar datos por código ------------------------------------------
+ 1. Sincronizacion -> normalizador: unificar({redmine, gitlab, glpi, rocketchat}, desarrolladores)
+ 2. normalizador: por cada issue de RedMine -> extraerCodigo(campo "Código"),
+    tipo por tracker, Etapa por campo "Etapa" -> Peticion (avance = calcularAvance(etapa))
+    alt codigo/tipo/etapa invalidos -> RegistroNoReconocido(fuente 'redmine', motivo)
+    alt codigo repetido -> se conserva el primero
+ 3. por cada ticket de GLPI -> extraerCodigo(name) -> se une a la Peticion (sin duplicar)
+    alt sin peticion -> RegistroNoReconocido(fuente 'glpi')
+ 4. por cada evento de GitLab -> extraerCodigo(rama) o extraerCodigo(titulo)
+    -> Peticion.actividades += ActividadCodigo{tipo, rama, idOrigen, estado, fecha}
+    alt sin peticion -> RegistroNoReconocido(fuente 'gitlab', codigoOriginal = rama)
+ 5. por cada mensaje de Rocket Chat con codigo reconocido -> notificaciones
+ 6. normalizador -> Sincronizacion: {peticiones, proyectos, modulosConCambios,
+    notificaciones, registrosNoReconocidos}
+
+--- CU-08 Calcular carga y avance ------------------------------------------
+ 1. Sincronizacion -> carga.js: calcularCarga(peticiones, desarrolladores, umbral)
+ 2. por cada Desarrollador: peticiones con estado 'abierta' -> porTipo
+ 3. avance.js: avancePromedio(abiertas) (10/40/70/90/100 segun Etapa)
+ 4. superaUmbral = peticionesAbiertas > umbral.maxPeticiones
+ 5. -> List<IndicadorCarga>; persistencia en el paso 10 de CU-05 (INSERT indicador_carga)
+ alt sin peticiones abiertas: carga 0, avance 0, superaUmbral false
+ Tambien se recalcula en CU-10 (PUT /api/umbral).
+
+--- CU-09 Enviar alerta ----------------------------------------------------
+ 1. Sincronizacion -> alertas.js: generarAlertas(indicadores, umbral)
+    -> una Alerta por IndicadorCarga con superaUmbral
+ 2. alertas.js -> enviarAlertaRocketChat(alerta)
+    alt USAR_MOCKS=true o sin ROCKETCHAT_URL: no se envia (enviadaRocketChat = false)
+    alt misma carga y umbral ya enviados (historial): no se reenvia
+    sino: POST {ROCKETCHAT_URL}/api/v1/chat.postMessage {channel: ROCKETCHAT_CANAL_ALERTAS, text}
+          cabeceras X-Auth-Token, X-User-Id
+ 3. AlmacenPostgres -> PostgreSQL: INSERT alerta (enviada_rocket_chat, peticiones_abiertas, umbral)
+ 4. Dashboard.jsx -> GET /api/alertas -> PanelAlertas.jsx (en pantalla)
+ Al reiniciar: AlmacenPostgres.inicializar -> restaurarHistorialAlertas (no reenvia).
+
+--- CU-10 Configurar umbral -----------------------------------------------
+ 1. Administrador TI -> PanelAdministracionTI.jsx: escribe maxPeticiones
+ 2. api.js -> PUT /api/umbral {maxPeticiones}
+ 3. requiereSesion -> requierePermiso('configurar')  (403 si no es Administrador TI)
+ 4. rutas/datos.js: valida entero >= 1 (400 si no) y actualiza umbral
+    {maxPeticiones, vigenteDesde, configuradoPor = usuario.id}
+ 5. rutas/datos.js -> AlmacenPostgres: guardarUmbral(umbral) -> PostgreSQL: INSERT umbral
+ 6. rutas/datos.js -> calcularCarga(...) y generarAlertas(...)
+ 7. rutas/datos.js -> AlmacenPostgres: guardarResultado({indicadores, alertas})
+    -> INSERT indicador_carga (sincronizacion_id NULL), INSERT alerta
+ 8. 200 {umbral, indicadores, alertas} -> Dashboard.jsx: umbralActualizado(umbral, alertas)
+    -> vuelve a pedir /api/carga con los filtros vigentes
+ Al reiniciar: AlmacenPostgres.cargarUmbral -> el umbral configurado gana a UMBRAL_MAX_PETICIONES.
+
+--- CU-11 Revisar registros no reconocidos ---------------------------------
+ 1. Administrador TI -> PanelAdministracionTI.jsx: abre la revision
+ 2. api.js -> GET /api/registros-no-reconocidos  (?todos=true incluye revisados)
+ 3. requierePermiso('configurar') -> AlmacenMemoria.listarRegistrosNoReconocidos() -> 200
+ 4. Administrador TI marca un registro (opcional: peticionCodigo)
+ 5. api.js -> PATCH /api/registros-no-reconocidos/{id} {peticionCodigo?}
+ 6. rutas/datos.js: si peticionCodigo no existe -> 400
+ 7. rutas/datos.js -> AlmacenPostgres: marcarRegistroNoReconocido(id, peticionCodigo)
+    -> PostgreSQL: UPDATE registro_no_reconocido SET revisado, peticion_asignada WHERE clave
+ 8. 200 {registro} | 404 si el id no existe
+ La revision se conserva entre sincronizaciones y reinicios (clave estable).
+
+
+================================================================================
+ 7. DIAGRAMA DE COMPONENTES
+================================================================================
+
+COMPONENTE FRONTEND "Dashboard web" (React + Vite + Chart.js)
+  main.jsx                   arranque -> App.jsx
+  App.jsx                    sesion (sessionStorage), elige Login o Dashboard, salir()
+  paginas/Login.jsx          CU-01 (roles de prueba de utilidades/catalogo.js)
+  paginas/Dashboard.jsx      CU-02, CU-03, CU-04 (boton), contenedor del resto
+  componentes/Encabezado.jsx         nombre, rol, "Cerrar sesión"
+  componentes/PanelFiltros.jsx       CU-02
+  componentes/ResumenCarga.jsx       resumen
+  componentes/GraficoCarga.jsx       grafico de carga (chart.js, react-chartjs-2)
+  componentes/PanelAlertas.jsx       alertas
+  componentes/TablaPeticiones.jsx    tabla + componentes/RielEtapas.jsx (avance por etapa)
+  componentes/PanelAdministracionTI.jsx  CU-10, CU-11
+  api.js                     cliente HTTP: pedir(), iniciarSesion(), cerrarSesion(), ErrorSesion
+  utilidades/formato.js      construirConsulta, FILTROS_VACIOS, formatearFecha, plural
+  utilidades/catalogo.js     TIPOS, ETAPAS, ROLES_PRUEBA
+  INTERFAZ REQUERIDA: "API REST /api" (JSON, Bearer token)
+
+COMPONENTE BACKEND "API" (Node.js 22 + Express 5)
+  app.js (crearApp)          ensambla middlewares y rutas
+  INTERFAZ PROVISTA: API REST
+    GET    /api/salud
+    POST   /api/auth/login            GET /api/auth/sesion        POST /api/auth/logout
+    GET    /api/catalogos             GET /api/carga              GET /api/peticiones
+    GET    /api/alertas               GET /api/sincronizacion/estado
+    PUT    /api/umbral                (configurar)
+    GET    /api/registros-no-reconocidos          (configurar)
+    PATCH  /api/registros-no-reconocidos/:id      (configurar)
+  Subcomponentes:
+    auth          ServicioSesiones (sso-mock.js), requiereSesion/requierePermiso
+                  (middleware.js), Rol (roles.js)
+    rutas         rutasAuth, rutasDatos, rutasSincronizacion
+    sincronizacion Sincronizacion, normalizador, programador
+                  (iniciarProgramador, crearSeguimientoSincronizacion, cerrarAplicacion)
+    conectores    Conector + ConectorRedmine, ConectorGitlab, ConectorGlpi, ConectorRocketChat
+                  INTERFAZ: leerDatos(desde)   (patron Adapter)
+    datos         AlmacenMemoria, AlmacenPostgres, RepositorioSincronizacionPostgres,
+                  calcularCarga, avance, alertas, filtro, modelos, constantes
+    config        config.js (variables de entorno)
+  INTERFACES REQUERIDAS:
+    SQL (pg)            -> PostgreSQL
+    REST RedMine        (X-Redmine-API-Key)
+    REST GitLab v4      (PRIVATE-TOKEN)
+    REST GLPI apirest   (App-Token + user_token -> Session-Token)
+    REST Rocket Chat v1 (X-Auth-Token + X-User-Id): lectura de canales y chat.postMessage
+    SSO de la cooperativa <<pendiente>> (OIDC/SAML/CAS por confirmar)
+
+COMPONENTE "Base de datos" PostgreSQL 17 (database/schema.sql)
+
+DEPENDENCIAS ENTRE COMPONENTES DEL BACKEND (flechas de uso)
+  app.js -> auth (middleware), rutas
+  rutas/datos.js -> auth/middleware, datos/filtro, datos/carga, datos/alertas, datos/constantes
+  index.js -> app, auth/sso-mock, config, conectores, datos (AlmacenMemoria, AlmacenPostgres,
+              RepositorioSincronizacionPostgres), sincronizacion (Sincronizacion, programador)
+  sincronizacion/Sincronizacion -> datos/alertas, datos/carga, sincronizacion/normalizador
+  sincronizacion/normalizador -> datos/avance, datos/constantes
+  conectores/* -> config
+  datos/almacen-postgres -> datos/almacen, datos/alertas, pg
+  datos/alertas -> config, datos/modelos
+  datos/carga -> datos/avance, datos/constantes, datos/modelos
+
+
+================================================================================
+ 8. DIAGRAMA DE PAQUETES
+================================================================================
+
+padre-julian-lorente-carga-devs (monorepo npm workspaces)
+|
++-- frontend/src
+|   +-- (raiz)        main.jsx, App.jsx, api.js, estilos.css
+|   +-- paginas       Login.jsx, Dashboard.jsx
+|   +-- componentes   Encabezado, PanelFiltros, ResumenCarga, GraficoCarga, PanelAlertas,
+|   |                 TablaPeticiones, RielEtapas, PanelAdministracionTI
+|   +-- utilidades    formato.js, catalogo.js (+ formato.test.js)
+|
++-- backend/src
+|   +-- (raiz)        index.js (arranque), app.js (Express), config.js
+|   +-- auth          sso-mock.js, middleware.js, roles.js
+|   +-- rutas         auth.js, datos.js, sincronizacion.js
+|   +-- conectores    Conector.js, ConectorRedmine.js, ConectorGitlab.js, ConectorGlpi.js,
+|   |                 ConectorRocketChat.js, index.js (crearConectores)
+|   +-- sincronizacion Sincronizacion.js, normalizador.js, programador.js
+|   +-- datos         almacen.js, almacen-postgres.js, RepositorioSincronizacionPostgres.js,
+|                     modelos.js, carga.js, avance.js, alertas.js, filtro.js, constantes.js
++-- backend/mocks     redmine.json, gitlab.json, glpi.json, rocketchat.json,
+|                     desarrolladores.json, usuarios-sso.json
++-- backend/test      pruebas node:test (incluye integracion con PostgreSQL)
++-- database          schema.sql, migrations/
++-- docs              documentacion
+
+IMPORTACIONES ENTRE PAQUETES (<<import>>)
+  frontend:
+    (raiz) main      -> (raiz) App
+    (raiz) App       -> paginas, (raiz) api
+    paginas          -> componentes, utilidades, (raiz) api
+    componentes      -> utilidades, (raiz) api (solo PanelAdministracionTI)
+  frontend -> backend: SIN import de codigo; solo HTTP /api (via nginx o proxy de Vite)
+  backend:
+    (raiz) index     -> (raiz) app, (raiz) config, auth, conectores, datos, sincronizacion
+    (raiz) app       -> auth, rutas, datos (FiltroInvalidoError)
+    rutas            -> auth, datos, (raiz) config
+    auth             -> (raiz) config
+    conectores       -> (raiz) config
+    sincronizacion   -> datos
+    datos            -> (raiz) config
+  Sin ciclos: datos no importa sincronizacion ni rutas; conectores no importa datos.
+  Dependencias externas: express, cors, node-cron, pg (backend);
+                         react, react-dom, chart.js, react-chartjs-2 (frontend).
+
+
+================================================================================
+ 9. DIAGRAMA DE DESPLIEGUE
+================================================================================
+
+NODO: Equipo anfitrion (Docker Engine + Docker Compose v2)
+  Proyecto compose: padre-julian-lorente-carga-devs
+  Red: padre-julian-lorente-carga-devs_default (bridge, creada por compose; los
+       servicios se encuentran por nombre: postgres, backend, frontend)
+  Volumen: datos-postgres -> /var/lib/postgresql/data
+
+  <<container>> frontend
+    imagen: padre-julian-lorente-carga-devs-frontend (build frontend/Dockerfile:
+            node:22-alpine construye, nginx:1.27-alpine sirve)
+    artefacto: frontend/dist en /usr/share/nginx/html
+    puerto: 8080 (anfitrion) -> 80 (contenedor)
+    nginx: /api/ -> proxy_pass http://backend:3000 ; resto -> index.html
+    depends_on: backend
+
+  <<container>> backend
+    imagen: padre-julian-lorente-carga-devs-backend (node:22-alpine, USER node)
+    proceso: node src/index.js
+    puerto: 3000 -> 3000
+    healthcheck: wget http://localhost:3000/api/salud
+    entorno: PORT=3000, FRONTEND_URL=http://localhost:8080,
+             DATABASE_URL=postgres://carga_devs:carga_devs_local@postgres:5432/carga_devs
+             (+ .env opcional: USAR_MOCKS, SYNC_*, UMBRAL_MAX_PETICIONES, credenciales de fuentes)
+    depends_on: postgres (service_healthy)
+
+  <<container>> postgres
+    imagen: postgres:17-alpine
+    puerto: 127.0.0.1:5432 -> 5432 (solo el anfitrion)
+    init: ./database/schema.sql -> /docker-entrypoint-initdb.d/01-schema.sql (solo al crear el volumen)
+    healthcheck: pg_isready
+    BD carga_devs / usuario carga_devs / contraseña carga_devs_local (prototipo)
+
+NODO: Navegador del usuario
+  http://localhost:8080 (HTTP) -> frontend
+
+NODOS EXTERNOS: red de la cooperativa (on-premise, Docker)  <<sistema externo>>
+  RedMine        HTTPS REST  REDMINE_URL       (REDMINE_API_KEY)
+  GitLab         HTTPS REST  GITLAB_URL        (GITLAB_TOKEN, GITLAB_PROJECT_IDS)
+  GLPI           HTTPS REST  GLPI_URL          (GLPI_APP_TOKEN, GLPI_USER_TOKEN)
+  Rocket Chat    HTTPS REST  ROCKETCHAT_URL    (ROCKETCHAT_USER_ID, ROCKETCHAT_TOKEN,
+                             ROCKETCHAT_CANALES_LECTURA, ROCKETCHAT_CANAL_ALERTAS)
+  SSO de la cooperativa <<pendiente>>  SSO_URL, SSO_CLIENT_ID, SSO_CLIENT_SECRET
+  Conexiones: backend -> cada sistema externo. Hoy USAR_MOCKS=true: no hay
+  conexion real y se usan backend/mocks/*.json.
+
+CAMINOS DE COMUNICACION
+  Navegador --HTTP:8080--> frontend(nginx) --HTTP:3000 /api--> backend --TCP:5432 SQL--> postgres
+  backend --HTTPS--> RedMine | GitLab | GLPI | Rocket Chat ; backend --HTTPS--> SSO <<pendiente>>
+
+ENTORNOS ALTERNATIVOS (nota)
+  Desarrollo: npm run dev -> Vite :5173 (proxy /api) + backend :3000; sin DATABASE_URL = memoria.
+  CI: GitHub Actions (lint, pruebas con servicio postgres:17-alpine, SonarQube Cloud, build Docker).
+
+
+================================================================================
+ 10. INSUMOS PARA LA DOCUMENTACION DE ARQUITECTURA
+================================================================================
+
+ESTILO GENERAL
+  Monolito modular de 3 capas (presentacion React / API Express / datos PostgreSQL)
+  desplegado como 3 contenedores. Modulos alineados con el equipo:
+  Usuario web y seguridad, Integracion, Datos y alertas.
+
+DECISIONES (formato: decision - motivo - consecuencia)
+
+  AD-01 Integrar por API con conectores (patron Adapter / Strategy)
+    - Conector (abstracta) define leerDatos(desde); cada fuente tiene su subclase.
+      Registro en conectores/index.js (crearConectores).
+    - Motivo: decision de la cooperativa (integrar, no replicar) y RNF-04.
+    - Consecuencia: agregar una fuente = 1 subclase + 1 linea. Cada conector
+      traduce autenticacion y paginacion propias de su API.
+
+  AD-02 Lectura incremental con cursor y snapshot
+    - Cada fuente guarda su ultimo snapshot y cursor (snapshot_fuente); la
+      siguiente lectura pide solo lo modificado desde cursor - 5 min de solapamiento.
+    - Consecuencia: menos carga sobre las APIs; con mocks no se persisten snapshots.
+
+  AD-03 Tolerancia a fallos (RNF-01)
+    - 3 reintentos por fuente (SYNC_REINTENTOS) con espera (SYNC_ESPERA_REINTENTO_MS).
+    - Si falla: RegistroFallo + se usan los ultimos datos buenos; estado parcial/fallida.
+    - Nunca dos sincronizaciones a la vez (enEjecucion); al arrancar, las filas
+      'en-curso' abandonadas se marcan 'fallida' (recuperarSincronizacionesAbandonadas).
+    - Cierre ordenado (SIGTERM/SIGINT): detiene el cron, espera la sincronizacion
+      en curso y cierra el pool (cerrarAplicacion).
+
+  AD-04 Cache en memoria + persistencia transaccional en PostgreSQL
+    - AlmacenMemoria es la cache de lectura: las rutas leen de memoria (rapido,
+      sin cambios en las rutas).
+    - Dos escritores sobre el MISMO pool pg, cada uno en su transaccion:
+        RepositorioSincronizacionPostgres (Integracion): sincronizacion,
+          registro_fallo, snapshot_fuente.
+        AlmacenPostgres extends AlmacenMemoria (Datos y alertas): peticion,
+          proyecto, modulo_core, peticion_modulo, actividad_codigo,
+          indicador_carga, alerta, umbral, registro_no_reconocido, desarrollador, usuario.
+    - Enlace: AlmacenPostgres recibe el sincronizacionId creado por el repositorio.
+    - Al arrancar se rehidrata: umbral configurado, snapshots y cursores,
+      revisiones de registros no reconocidos, estado de la ultima sincronizacion,
+      historial de alertas enviadas.
+    - Sin DATABASE_URL: solo memoria (desarrollo). Con DATABASE_URL: PostgreSQL
+      obligatorio (si no esta disponible, el backend no arranca).
+    - Upserts por clave natural: no hay duplicados al resincronizar.
+    - Riesgo aceptado: no hay transaccion distribuida entre PostgreSQL y Rocket Chat.
+
+  AD-05 Cruce por codigo como clave de integracion
+    - RedMine es la fuente principal; GLPI y GitLab se unen por el codigo
+      (POA-AAAA-NNN, REC-AAAA-NNN, INC-AAAA-NNN, iniciativa.ti.NNN).
+    - Lo que no cruza no se descarta: RegistroNoReconocido para revision humana (CU-11).
+
+  AD-06 Avance estimado por etapa
+    - RedMine no registra avance real; 10/40/70/90/100 % segun Etapa.
+    - Configurable sin tocar codigo: AVANCE_POR_ETAPA. Propuesta pendiente de
+      validar con la cooperativa.
+    - No se priorizan peticiones con algoritmos (decision de la cooperativa).
+
+  AD-07 Seguridad por roles (RNF-02)
+    - SSO de la cooperativa: no se guardan contraseñas. Hoy simulado (SSO_MODO=mock).
+    - Token Bearer por sesion (480 min). requiereSesion -> 401; requierePermiso -> 403.
+    - Permisos: ver:todos, ver:propios, exportar, configurar.
+    - Técnico: aplicarRestriccionRol fija el filtro a su propio desarrollador en el servidor.
+    - Credenciales solo en variables de entorno; .env no se versiona.
+    - PostgreSQL solo escucha en 127.0.0.1 del anfitrion; backend sin privilegios (USER node).
+
+  AD-08 Alertas sin duplicados
+    - Alerta en pantalla siempre; Rocket Chat solo si cambian carga o umbral
+      (historial por desarrollador, restaurado desde PostgreSQL al reiniciar).
+
+  AD-09 Open source y Docker (RNF-05)
+    - Node.js, React, PostgreSQL, nginx; docker compose up --build sin configuracion.
+
+  AD-10 Calidad
+    - Pruebas: node:test (backend, incluye integracion con PostgreSQL en schema
+      temporal) y Vitest (frontend). CI con lint, cobertura y SonarQube Cloud.
+
+ALCANCE DEL PROTOTIPO (que SI y que NO)
+  SI:  CU-01..CU-03 y CU-05..CU-11 funcionando con datos de prueba; conectores
+       reales implementados (se activan con USAR_MOCKS=false y credenciales);
+       persistencia PostgreSQL; despliegue Docker.
+  NO / pendiente:
+       CU-04 Exportar reporte (RF-13).
+       SSO real (protocolo por confirmar con la cooperativa).
+       Sesiones persistentes (hoy en memoria: al reiniciar hay que volver a ingresar).
+       Usuarios desde el SSO (hoy se cargan de mocks/usuarios-sso.json).
+       Retencion de historicos (indicador_carga crece ~7 filas por sincronizacion).
+       Lectura directa desde SQL en las rutas (hoy cache en memoria).
+       Manuales tecnico y de usuario (RNF-06).
+       Validar con la cooperativa: porcentajes de avance y nombres de campos
+       personalizados de RedMine ("Código", "Etapa", "Módulo del core").
+
+ATRIBUTOS DE CALIDAD -> MECANISMO
+  Disponibilidad ....... reintentos, ultimos datos buenos, recuperacion de 'en-curso'
+  Seguridad ............ SSO, roles/permisos, Bearer, variables de entorno
+  Mantenibilidad ....... modulos por responsable, Adapter de conectores, pruebas
+  Extensibilidad ....... nueva fuente = nueva subclase de Conector
+  Rendimiento .......... cache en memoria, lectura incremental
+  Usabilidad ........... interfaz sencilla en español (RNF-03)
+  Portabilidad ......... Docker Compose
+
+================================================================================
+ FIN
+================================================================================

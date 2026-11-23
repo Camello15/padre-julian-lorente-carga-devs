@@ -1,7 +1,7 @@
 # language: es
 # Responsable: Bryan. Requisitos: RF-02 a RF-05, RF-06 a RF-10, RF-12, RNF-01, RNF-04. Incluye CU-07 y CU-08.
 Característica: CU-05 Sincronizar fuentes
-  Como programador de tareas
+  Como Programador de tareas (cron)
   Quiero leer periódicamente RedMine, GitLab, GLPI y Rocket Chat
   Para actualizar la información de carga y avance disponible para consulta
 

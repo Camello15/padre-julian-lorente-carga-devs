@@ -18,7 +18,7 @@ Estos son los nombres que se usan **exactamente igual** en el código y en los d
 | **Sincronización** | Lectura periódica (cada 15 min) de todas las fuentes. | `Sincronizacion` |
 | **Registro no reconocido** | Dato de una fuente que no se pudo cruzar por código; lo revisa TI. | `RegistroNoReconocido` |
 | **SSO** | Inicio de sesión único de la cooperativa (autenticación centralizada). | `auth/sso-mock.js` |
-| **Rol** | Perfil del usuario: PMO, Técnico o Administrativo. | `Rol` |
+| **Rol** | Perfil del usuario: PMO, Técnico, Administrativo o Administrador TI. Solo el Administrador TI configura el umbral y revisa los registros no reconocidos. | `Rol` |
 | **Dashboard** | Pantalla principal con carga, avance, filtros y alertas. | `Dashboard.jsx` |
 | **Reporte** | Archivo Excel o PDF exportado desde el dashboard. | `Reporte` |
 

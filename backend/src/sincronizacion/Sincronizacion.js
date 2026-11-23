@@ -195,7 +195,9 @@ export class Sincronizacion {
         }
       }));
 
-      this.almacen.guardarResultado({
+      // AlmacenPostgres guarda los datos de dominio enlazados a la fila de sincronizacion de Bryan.
+      await this.almacen.guardarResultado({
+        sincronizacionId: sincronizacionId ?? null,
         desarrolladores: this.desarrolladores,
         proyectos: unificado.proyectos,
         modulosConCambios: unificado.modulosConCambios,
