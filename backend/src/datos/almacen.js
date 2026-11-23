@@ -20,6 +20,48 @@ export class AlmacenMemoria {
     this.ultimosDatosPorFuente.set(nombreFuente, { datos, fecha: fecha.toISOString() });
   }
 
+  /** Guarda de forma atómica el snapshot y cursor exitosos de una fuente. */
+  guardarSnapshotFuente(nombreFuente, datos, fecha, { incremental = false, cursor = fecha } = {}) {
+    const snapshot = this.combinarSnapshotFuente(nombreFuente, datos, { incremental });
+    this.confirmarSnapshotFuente(nombreFuente, snapshot, fecha, cursor);
+    return snapshot;
+  }
+
+  combinarSnapshotFuente(nombreFuente, datos, { incremental = false } = {}) {
+    const anterior = this.ultimosDatosFuente(nombreFuente);
+    let snapshot = datos;
+    if (incremental || nombreFuente === 'redmine') {
+      // La ausencia en un delta no implica eliminación; no se aplica estrategia de borrado.
+      const base = incremental && anterior ? anterior.datos : [];
+      const porId = new Map(base.map((registro, indice) => [
+        registro?.id === undefined || registro?.id === null ? `sin-id:${indice}` : String(registro.id),
+        registro,
+      ]));
+      for (const registro of datos) {
+        if (registro?.id === undefined || registro?.id === null) {
+          throw new Error(`Registro incremental de ${nombreFuente} sin id`);
+        }
+        porId.set(String(registro.id), registro);
+      }
+      snapshot = [...porId.values()];
+    }
+    return snapshot;
+  }
+
+  confirmarSnapshotFuente(nombreFuente, datos, fecha, cursor = fecha) {
+    const fechaIso = fecha.toISOString();
+    const cursorIso = cursor.toISOString();
+    this.ultimosDatosPorFuente.set(nombreFuente, { datos, fecha: fechaIso, cursor: cursorIso });
+  }
+
+  rehidratarSnapshotFuente(nombreFuente, datos, fecha, cursor) {
+    this.ultimosDatosPorFuente.set(nombreFuente, { datos, fecha, cursor });
+  }
+
+  cursorFuente(nombreFuente) {
+    return this.ultimosDatosFuente(nombreFuente)?.cursor ?? null;
+  }
+
   ultimosDatosFuente(nombreFuente) {
     return this.ultimosDatosPorFuente.get(nombreFuente) ?? null;
   }

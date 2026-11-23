@@ -5,19 +5,23 @@ import { AlmacenMemoria } from './almacen.js';
 const iso = (fecha) => (fecha instanceof Date ? fecha.toISOString() : fecha ?? null);
 
 /**
- * Almacén con persistencia en PostgreSQL (database/schema.sql).
+ * Almacén con persistencia en PostgreSQL (database/schema.sql) para el módulo Datos y alertas.
  *
- * Paso 1 de la migración: la memoria (AlmacenMemoria) sigue siendo la caché de lectura,
- * así que las rutas no cambian. Cada escritura se guarda además en PostgreSQL dentro de
- * una transacción, y al arrancar `inicializar()` recupera lo que debe sobrevivir a un
- * reinicio: el Umbral configurado, los últimos datos de cada Fuente (RNF-01), las
- * revisiones de registros no reconocidos (CU-11), el estado de la última Sincronización
+ * La memoria (AlmacenMemoria) sigue siendo la caché de lectura, así que las rutas no cambian.
+ * Cada escritura se guarda además en PostgreSQL dentro de una transacción, y al arrancar
+ * `inicializar()` recupera lo que debe sobrevivir a un reinicio: el Umbral configurado (CU-10),
+ * las revisiones de registros no reconocidos (CU-11), el estado de la última Sincronización
  * y las Alertas ya enviadas a Rocket Chat (CU-09).
+ *
+ * División con Integración: las filas de `sincronizacion`, `registro_fallo` y `snapshot_fuente`
+ * las escribe RepositorioSincronizacionPostgres. Este almacén solo las lee y enlaza sus datos
+ * al `sincronizacionId` que recibe en `guardarResultado()`.
  */
 export class AlmacenPostgres extends AlmacenMemoria {
-  /** @param {{ pool?: pg.Pool, connectionString?: string }} opciones */
+  /** @param {{ pool?: pg.Pool, connectionString?: string }} opciones  Si recibe `pool`, no lo cierra: es compartido. */
   constructor({ pool, connectionString } = {}) {
     super();
+    this.poolPropio = !pool;
     this.pool = pool ?? new pg.Pool({ connectionString });
     this.idsFuente = new Map();
   }
@@ -81,7 +85,6 @@ export class AlmacenPostgres extends AlmacenMemoria {
     this.desarrolladores = desarrolladores;
 
     if (umbral) await this.cargarUmbral(umbral);
-    await this.cargarLecturasFuente();
     await this.cargarRegistrosNoReconocidos();
     await this.cargarEstadoSincronizacion();
     await this.cargarHistorialAlertas();
@@ -96,15 +99,6 @@ export class AlmacenPostgres extends AlmacenMemoria {
     if (rows.length > 0) {
       const [u] = rows;
       Object.assign(umbral, { maxPeticiones: u.max_peticiones, vigenteDesde: iso(u.vigente_desde), configuradoPor: u.configurado_por });
-    }
-  }
-
-  async cargarLecturasFuente() {
-    const { rows } = await this.pool.query(
-      'SELECT f.nombre, l.datos, l.fecha FROM lectura_fuente l JOIN fuente f ON f.id = l.fuente_id',
-    );
-    for (const r of rows) {
-      this.ultimosDatosPorFuente.set(r.nombre, { datos: r.datos, fecha: iso(r.fecha) });
     }
   }
 
@@ -125,7 +119,9 @@ export class AlmacenPostgres extends AlmacenMemoria {
   }
 
   async cargarEstadoSincronizacion() {
-    const ultima = await this.pool.query('SELECT inicio, fin, estado FROM sincronizacion ORDER BY id DESC LIMIT 1');
+    const ultima = await this.pool.query(
+      "SELECT inicio, fin, estado FROM sincronizacion WHERE estado <> 'en-curso' ORDER BY id DESC LIMIT 1",
+    );
     if (ultima.rows.length === 0) return;
     const exitosa = await this.pool.query("SELECT max(inicio) AS inicio FROM sincronizacion WHERE estado = 'ok'");
     const fallos = await this.pool.query(
@@ -154,24 +150,13 @@ export class AlmacenPostgres extends AlmacenMemoria {
     );
   }
 
-  async guardarDatosFuente(nombreFuente, datos, fecha) {
-    await this.transaccion(async (c) => {
-      await c.query(
-        `INSERT INTO lectura_fuente (fuente_id, datos, fecha) VALUES ($1, $2, $3)
-         ON CONFLICT (fuente_id) DO UPDATE SET datos = EXCLUDED.datos, fecha = EXCLUDED.fecha`,
-        [await this.idFuente(c, nombreFuente), JSON.stringify(datos), fecha],
-      );
-    });
-    super.guardarDatosFuente(nombreFuente, datos, fecha);
-  }
-
-  /** Guarda en una sola transacción lo que traiga el resultado (Sincronización completa o recálculo por Umbral). */
-  async guardarResultado(resultado) {
+  /**
+   * Guarda en una sola transacción lo que traiga el resultado (Sincronización completa o recálculo por Umbral).
+   * `sincronizacionId` es la fila creada por RepositorioSincronizacionPostgres (null en un recálculo por Umbral).
+   */
+  async guardarResultado({ sincronizacionId = null, ...resultado }) {
     super.guardarResultado(resultado);
     await this.transaccion(async (c) => {
-      const sincronizacionId = resultado.estadoSincronizacion
-        ? await this.guardarSincronizacion(c, resultado.estadoSincronizacion)
-        : null;
       if (resultado.peticiones) await this.guardarPeticiones(c, resultado.proyectos ?? [], resultado.peticiones);
       const idsIndicador = resultado.indicadores
         ? await this.guardarIndicadores(c, resultado.indicadores, sincronizacionId)
@@ -179,23 +164,6 @@ export class AlmacenPostgres extends AlmacenMemoria {
       if (resultado.alertas) await this.guardarAlertas(c, resultado.alertas, idsIndicador);
       if (resultado.registrosNoReconocidos) await this.guardarRegistrosNoReconocidos(c, sincronizacionId);
     });
-  }
-
-  async guardarSincronizacion(c, estado) {
-    const { rows } = await c.query(
-      'INSERT INTO sincronizacion (inicio, fin, estado) VALUES ($1, $2, $3) RETURNING id',
-      [estado.inicio, estado.fin, estado.estado],
-    );
-    const id = rows[0].id;
-    // estado.fallos acumula fallos anteriores; solo se guardan los de esta Sincronización.
-    const nuevos = (estado.fallos ?? []).filter((f) => f.fecha >= estado.inicio);
-    for (const f of nuevos) {
-      await c.query(
-        'INSERT INTO registro_fallo (sincronizacion_id, fuente_id, fecha, intentos, mensaje) VALUES ($1, $2, $3, $4, $5)',
-        [id, await this.idFuente(c, f.fuente), f.fecha, f.intentos ?? 0, f.mensaje],
-      );
-    }
-    return id;
   }
 
   async guardarPeticiones(c, proyectos, peticiones) {
@@ -304,6 +272,6 @@ export class AlmacenPostgres extends AlmacenMemoria {
   }
 
   async cerrar() {
-    await this.pool.end();
+    if (this.poolPropio) await this.pool.end();
   }
 }

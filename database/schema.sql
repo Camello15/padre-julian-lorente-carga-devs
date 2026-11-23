@@ -57,18 +57,19 @@ CREATE TABLE fuente (
   activa   BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+CREATE TABLE snapshot_fuente (
+  fuente_id  SMALLINT PRIMARY KEY REFERENCES fuente(id),
+  datos      JSONB NOT NULL CHECK (jsonb_typeof(datos) = 'array'),
+  fecha      TIMESTAMPTZ NOT NULL,
+  cursor     TIMESTAMPTZ,
+  metadatos  JSONB NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(metadatos) = 'array')
+);
+
 CREATE TABLE sincronizacion (
   id      BIGSERIAL PRIMARY KEY,
   inicio  TIMESTAMPTZ NOT NULL,
   fin     TIMESTAMPTZ,
   estado  VARCHAR(20) NOT NULL CHECK (estado IN ('en-curso', 'ok', 'parcial', 'fallida'))
-);
-
--- Últimos datos buenos de cada Fuente: si una Fuente falla, la Sincronización los reutiliza (RNF-01, CU-06).
-CREATE TABLE lectura_fuente (
-  fuente_id  SMALLINT PRIMARY KEY REFERENCES fuente(id),
-  datos      JSONB NOT NULL,
-  fecha      TIMESTAMPTZ NOT NULL
 );
 
 CREATE TABLE registro_fallo (

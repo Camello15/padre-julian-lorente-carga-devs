@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs';
 import { after, before, describe, it } from 'node:test';
 import { crearApp } from '../src/app.js';
 import { ServicioSesiones } from '../src/auth/sso-mock.js';
-import { Conector } from '../src/conectores/Conector.js';
 import { crearConectores } from '../src/conectores/index.js';
 import { AlmacenPostgres } from '../src/datos/almacen-postgres.js';
+import { RepositorioSincronizacionPostgres } from '../src/datos/RepositorioSincronizacionPostgres.js';
 import { Sincronizacion } from '../src/sincronizacion/Sincronizacion.js';
 import { crearBaseTemporal, urlPruebas } from './apoyo/postgres.js';
 
@@ -13,13 +13,18 @@ const leerMock = (archivo) => JSON.parse(readFileSync(new URL(`../mocks/${archiv
 const desarrolladores = leerMock('desarrolladores.json');
 const usuarios = leerMock('usuarios-sso.json');
 
-class ConectorCaido extends Conector {
-  constructor(nombre) { super({ nombre, urlApi: '', activa: true }); }
-  async leerDatos() { throw new Error(`${this.fuente.nombre} no responde`); }
-}
-
-const sincronizar = (almacen, umbral, conectores = crearConectores()) =>
-  new Sincronizacion({ conectores, almacen, desarrolladores, umbral, esperaReintentoMs: 0 }).ejecutar();
+// Igual que index.js: Integración persiste con RepositorioSincronizacionPostgres y Datos y alertas con
+// AlmacenPostgres, sobre el mismo pool.
+const sincronizar = (almacen, umbral) =>
+  new Sincronizacion({
+    conectores: crearConectores(),
+    almacen,
+    desarrolladores,
+    umbral,
+    esperaReintentoMs: 0,
+    persistencia: new RepositorioSincronizacionPostgres(almacen.pool),
+    modoMocks: true,
+  }).ejecutar();
 
 /** Simula un reinicio del backend: almacén nuevo sobre la misma base. */
 async function arrancar(bd, umbral = { maxPeticiones: 6 }) {
@@ -48,7 +53,6 @@ describe('AlmacenPostgres (integración)', { skip: !urlPruebas && 'Define TEST_D
     const estado = await sincronizar(almacen, umbral);
 
     assert.equal(await contar(bd, 'peticion'), almacen.peticiones.length);
-    assert.equal(await contar(bd, 'lectura_fuente'), 4);
     assert.equal(await contar(bd, 'indicador_carga'), desarrolladores.length);
     assert.equal(await contar(bd, 'alerta'), almacen.alertas.length);
     assert.ok(almacen.alertas.length > 0, 'los mocks deben generar al menos una alerta');
@@ -85,24 +89,25 @@ describe('AlmacenPostgres (integración)', { skip: !urlPruebas && 'Define TEST_D
     assert.ok(reiniciado.listarRegistrosNoReconocidos().every((r) => r.id !== registro.id));
   });
 
-  it('si una Fuente falla tras reiniciar, usa sus últimos datos guardados (RNF-01, CU-06)', async () => {
+  it('comparte la fila de sincronizacion con Integración sin duplicarla', async () => {
     const umbral = { maxPeticiones: 6 };
-    const referencia = await arrancar(bd, umbral);
-    await sincronizar(referencia, umbral);
-    const total = referencia.peticiones.length;
+    const almacen = await arrancar(bd, umbral);
+    const antes = await contar(bd, 'sincronizacion');
+    await sincronizar(almacen, umbral);
+    assert.equal(await contar(bd, 'sincronizacion'), antes + 1);
 
-    const reiniciado = await arrancar(bd, umbral);
-    const conectores = crearConectores().map((c) => (c.fuente.nombre === 'redmine' ? new ConectorCaido('redmine') : c));
-    const estado = await sincronizar(reiniciado, umbral, conectores);
-
-    assert.equal(estado.estado, 'parcial');
-    assert.equal(estado.fuentes.find((f) => f.nombre === 'redmine').estado, 'con-datos-anteriores');
-    assert.equal(reiniciado.peticiones.length, total);
     const { rows } = await bd.consultar(
-      "SELECT r.intentos FROM registro_fallo r JOIN fuente f ON f.id = r.fuente_id WHERE f.nombre = 'redmine'",
+      `SELECT s.estado, count(i.id)::int AS indicadores FROM sincronizacion s
+       LEFT JOIN indicador_carga i ON i.sincronizacion_id = s.id GROUP BY s.id ORDER BY s.id DESC LIMIT 1`,
     );
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0].intentos, 3);
+    assert.equal(rows[0].estado, 'ok');
+    assert.equal(rows[0].indicadores, desarrolladores.length);
+  });
+
+  it('recupera el estado de la última Sincronización al reiniciar', async () => {
+    const reiniciado = await arrancar(bd);
+    assert.equal(reiniciado.estadoSincronizacion.estado, 'ok');
+    assert.ok(reiniciado.estadoSincronizacion.ultimaExitosa);
   });
 
   describe('API con PostgreSQL', () => {

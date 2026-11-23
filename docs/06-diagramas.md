@@ -64,13 +64,14 @@ En el diagrama de actividades cada acción lleva el **mismo nombre e ID** que su
 | `Fuente` | `fuente` | `nombre`, `urlApi` → `url_api`, `activa` |
 | `Conector` (abstracta) y `ConectorRedmine`, `ConectorGitlab`, `ConectorGlpi`, `ConectorRocketChat` | — (código) | `fuente` |
 | `Sincronizacion` | `sincronizacion` | `inicio`, `fin`, `estado` (`ok`, `parcial`, `fallida`) |
-| `AlmacenMemoria` / `AlmacenPostgres` | — (código, `backend/src/datos/`) | Guardan el resultado de cada Sincronización. `AlmacenPostgres` escribe en todas las tablas de esta lista |
+| `AlmacenMemoria` / `AlmacenPostgres` | — (código, `backend/src/datos/`) | Guardan el resultado de cada Sincronización. `AlmacenPostgres` escribe las tablas de Usuario web y de Datos y alertas |
+| `RepositorioSincronizacionPostgres` | — (código, `backend/src/datos/`) | Escribe `sincronizacion`, `registro_fallo` y `snapshot_fuente` (Integración) |
 | `RegistroFallo` | `registro_fallo` | `fecha`, `intentos`, `mensaje` |
 | `Desarrollador` | `desarrollador` | `id`, `nombre`, `correo`, `usuarioGitlab` → `usuario_gitlab`, `idRedmine` → `id_redmine`, `usuarioGlpi` → `usuario_glpi` |
 | `Proyecto` | `proyecto` | `codigo`, `nombre` |
 | `ModuloCore` | `modulo_core` (+ `peticion_modulo`) | `id`, `nombre` |
 | `Peticion` | `peticion` | `codigo`, `titulo`, `tipo`, `etapa`, `estado` (`abierta`, `cerrada`), `fechaInicio` → `fecha_inicio`, `fechaFin` → `fecha_fin` |
-| Últimos datos de cada `Fuente` (`AlmacenMemoria.ultimosDatosFuente()`) | `lectura_fuente` | `datos` (JSON crudo de la Fuente), `fecha`. Sin clase de dominio: es el respaldo de RNF-01 |
+| Último snapshot de cada `Fuente` (`AlmacenMemoria.ultimosDatosFuente()`, `cursorFuente()`) | `snapshot_fuente` | `datos` (JSON crudo de la Fuente), `fecha`, `cursor` (lectura incremental), `metadatos`. Sin clase de dominio: es el respaldo de RNF-01 |
 | `ActividadCodigo` | `actividad_codigo` | `tipo` (`commit`, `merge_request`, `pipeline`), `rama`, `idOrigen` → `id_origen`, `estado`, `fecha` |
 | `IndicadorCarga` | `indicador_carga` | `peticionesAbiertas` → `peticiones_abiertas`, `avancePromedio` → `avance_promedio`, `calculadoEn` → `calculado_en`, `porTipo` y `superaUmbral` (calculados, no se guardan) |
 | `Umbral` | `umbral` | `maxPeticiones` → `max_peticiones`, `vigenteDesde` → `vigente_desde`, `configuradoPor` → `configurado_por` |
@@ -169,10 +170,11 @@ flowchart TB
 | Módulo | Clases | Responsable |
 |---|---|---|
 | Usuario web y seguridad | Usuario, Rol, Sesion, Filtro, Reporte | Camilo |
-| Integración | Fuente, Conector y sus hijas, Sincronizacion, RegistroFallo | Bryan |
-| Datos y alertas | Desarrollador, Peticion, Proyecto, ModuloCore, ActividadCodigo, IndicadorCarga, Umbral, Alerta, RegistroNoReconocido, TipoTrabajo, Etapa | Cristina |
+| Integración | Fuente (objeto de configuración), Conector y sus hijas, Sincronizacion, EstadoSincronizacion y RegistroFallo (estructuras) | Bryan |
+| Datos y alertas | Desarrollador, Peticion, Proyecto, ModuloCore, ActividadCodigo, IndicadorCarga, Umbral, Alerta, RegistroNoReconocido, TipoTrabajo, Etapa, AlmacenPostgres | Cristina |
 
-Convención: atributos privados (`-`), métodos públicos (`+`). Los nombres son los del código (`backend/src/datos/modelos.js`, `auth/`, `conectores/`, `sincronizacion/`).
+Convención: en Usuario web y Datos y alertas, atributos privados (`-`) y métodos públicos (`+`). En Integración los atributos se muestran públicos (`+`) porque así se usan en el código, y `<<estructura>>` u `<<objeto_configuracion>>` marcan objetos que no son clases de JavaScript. Los nombres son los del código (`backend/src/datos/`, `auth/`, `conectores/`, `sincronizacion/`).
+
 
 ```mermaid
 classDiagram
@@ -218,31 +220,77 @@ classDiagram
         +generarExcel() File
         +generarPdf() File
     }
-    class Fuente {
-        -String nombre
-        -String urlApi
-        -bool activa
+    class Fuente <<objeto_configuracion>> {
+        +String nombre
+        +String urlApi
+        +bool activa
     }
     class Conector {
         <<abstract>>
-        -Fuente fuente
-        +leerDatos(DateTime desde) List
+        +Object fuente
+        +Conector(fuente)
+        +leerDatos(desde) Promise~List~
+        +leerMock(archivo) Promise~Object~
     }
-    class ConectorRedmine
-    class ConectorGitlab
-    class ConectorGlpi
-    class ConectorRocketChat
+    class ConectorRedmine {
+        +leerDatos(desde) Promise~List~
+    }
+    class ConectorGitlab {
+        +leerDatos(desde) Promise~List~
+    }
+    class ConectorGlpi {
+        +leerDatos(desde) Promise~List~
+    }
+    class ConectorRocketChat {
+        +leerDatos(desde) Promise~List~
+    }
     class Sincronizacion {
-        -DateTime inicio
-        -DateTime fin
-        -String estado
-        +ejecutar()
-        +leerConReintentos(Conector c, DateTime desde) List
+        +Array~Conector~ conectores
+        +AlmacenMemoria almacen
+        +Array~Object~ desarrolladores
+        +Object umbral
+        +int reintentos
+        +int esperaReintentoMs
+        +Function reloj
+        +bool enEjecucion
+        +leerConReintentos(conector, desde) Promise
+        +ejecutar() Promise
     }
-    class RegistroFallo {
-        -DateTime fecha
-        -int intentos
-        -String mensaje
+    class EstadoSincronizacion <<estructura>> {
+        +String estado
+        +String inicio
+        +String fin
+        +String ultimaExitosa
+        +Array~Object~ fuentes
+        +Array~RegistroFallo~ fallos
+        +int registrosNoReconocidos
+    }
+    class RegistroFallo <<estructura>> {
+        +String fuente
+        +String fecha
+        +int intentos
+        +String mensaje
+    }
+    class AlmacenMemoria {
+        +Map ultimosDatosPorFuente
+        +EstadoSincronizacion estadoSincronizacion
+        +guardarDatosFuente(nombreFuente, datos, fecha)
+        +ultimosDatosFuente(nombreFuente)
+        +guardarResultado(resultado)
+    }
+    class AlmacenPostgres {
+        -Pool pool
+        +inicializar(desarrolladores, usuarios, umbral) Promise
+        +guardarResultado(resultado) Promise
+        +guardarUmbral(umbral) Promise
+        +marcarRegistroNoReconocido(id, peticionCodigo) Promise
+    }
+    class RepositorioSincronizacionPostgres {
+        -Pool pool
+        +crearSincronizacion(inicio) Promise
+        +finalizarSincronizacion(resultado) Promise
+        +cargarSnapshots() Promise
+        +recuperarSincronizacionesAbandonadas() Promise
     }
     class Desarrollador {
         -String id
@@ -330,12 +378,17 @@ classDiagram
     Conector <|-- ConectorGitlab
     Conector <|-- ConectorGlpi
     Conector <|-- ConectorRocketChat
-    Fuente "1" --> "1" Conector : se lee con
-    Sincronizacion "1" --> "1..*" Fuente : recorre
-    Sincronizacion "1" --> "0..*" RegistroFallo : registra
-    RegistroFallo "0..*" --> "1" Fuente : de
+    Conector --> "1" Fuente : fuente (configuración)
+    Sincronizacion --> "0..*" Conector : conectores (array)
+    Sincronizacion --> "1" AlmacenMemoria : almacen
+    AlmacenMemoria "1" --> "1" EstadoSincronizacion : estadoSincronizacion
+    Sincronizacion ..> EstadoSincronizacion : crea y actualiza
+    EstadoSincronizacion --> "0..50" RegistroFallo : fallos (historial)
+    Sincronizacion ..> RegistroFallo : crea objetos de fallo
+    AlmacenMemoria <|-- AlmacenPostgres
+    Sincronizacion --> "0..1" RepositorioSincronizacionPostgres : persistencia
     Sincronizacion "1" --> "0..*" RegistroNoReconocido : detecta
-    RegistroNoReconocido "0..*" --> "1" Fuente : proviene de
+    RegistroNoReconocido "0..*" ..> "1" Fuente : fuente
     RegistroNoReconocido "0..*" --> "0..1" Peticion : se asigna a
     Proyecto "1" o-- "0..*" Peticion : agrupa
     Desarrollador "1" --> "0..*" Peticion : tiene asignadas
@@ -349,7 +402,7 @@ classDiagram
     IndicadorCarga "1" --> "0..*" Alerta : genera
 ```
 
-> En el prototipo, `Usuario`, `Rol` y `Sesion` son objetos simples (`auth/roles.js`, `auth/sso-mock.js`). Los datos se guardan en PostgreSQL con `AlmacenPostgres` si hay `DATABASE_URL`, o en memoria con `AlmacenMemoria` si no. Las sesiones siguen en memoria. La correspondencia con las tablas está en la sección 6.0 y en `database/schema.sql`.
+> En Integración, `Fuente` se muestra como el objeto de configuración asociado a cada conector; `EstadoSincronizacion` y `RegistroFallo` son estructuras de datos, no clases JavaScript. `leerDatos()` y `leerMock()` son asíncronos y sus firmas muestran la promesa que devuelven. Los campos de `EstadoSincronizacion` pertenecen al objeto guardado por `AlmacenMemoria`, no a la instancia de `Sincronizacion`. En el prototipo, otras clases de dominio también se implementan como objetos y funciones de JavaScript (por ejemplo, `calcularAvance()` en `backend/src/datos/avance.js`). La correspondencia con las tablas está en `database/schema.sql`. `AlmacenPostgres` (Datos y alertas) y `RepositorioSincronizacionPostgres` (Integración) comparten el pool de PostgreSQL cuando hay `DATABASE_URL`; sin ella, todo queda en `AlmacenMemoria`. Las sesiones siguen en memoria. La correspondencia con las tablas está en la sección 6.0.
 
 ## 6.4 Diagramas de secuencia
 
@@ -397,12 +450,14 @@ sequenceDiagram
     participant AL as alertas (CU-09)
     participant RC as Rocket Chat
     participant M as Almacén (AlmacenMemoria / AlmacenPostgres)
+    participant R as RepositorioSincronizacionPostgres
     P->>SY: ejecutar() cada 15 min
+    SY->>R: crearSincronizacion(inicio) → id (estado en-curso)
     par por cada Fuente
         SY->>C: leerConReintentos(desde) hasta 3 intentos
         alt Fuente responde
             C-->>SY: datos
-            SY->>M: guardarDatosFuente()
+            SY->>M: combinarSnapshotFuente()
         else falla 3 veces (CU-06)
             SY->>M: ultimosDatosFuente()
             M-->>SY: datos anteriores
@@ -414,10 +469,11 @@ sequenceDiagram
     SY->>CA: calcularCarga(Peticion[], Desarrollador[], Umbral)
     CA-->>SY: IndicadorCarga[]
     SY->>AL: generarAlertas(IndicadorCarga[], Umbral)
+    SY->>R: finalizarSincronizacion(id, estado, fallos, snapshots)
     loop por cada Alerta nueva
         AL->>RC: enviarAlertaRocketChat(Alerta)
     end
-    SY->>M: guardarResultado()
+    SY->>M: guardarResultado(sincronizacionId, ...)
 ```
 
 ### CU-10 Configurar umbral
@@ -456,7 +512,7 @@ erDiagram
     usuario |o--o{ umbral : "configura"
     sincronizacion ||--o{ registro_fallo : "registra"
     fuente ||--o{ registro_fallo : "de"
-    fuente ||--o| lectura_fuente : "guarda últimos datos"
+    fuente ||--o| snapshot_fuente : "guarda último snapshot"
     sincronizacion |o--o{ registro_no_reconocido : "detecta"
     fuente ||--o{ registro_no_reconocido : "proviene de"
     peticion |o--o{ registro_no_reconocido : "se asigna a"
@@ -500,9 +556,11 @@ erDiagram
         timestamptz inicio
         timestamptz fin
         varchar estado }
-    lectura_fuente { smallint fuente_id PK,FK
+    snapshot_fuente { smallint fuente_id PK,FK
         jsonb datos
-        timestamptz fecha }
+        timestamptz fecha
+        timestamptz cursor
+        jsonb metadatos }
     registro_fallo { bigint id PK
         bigint sincronizacion_id FK
         smallint fuente_id FK

@@ -144,13 +144,13 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **ID** | CU-05 |
 | **Nombre** | Sincronizar fuentes |
 | **Actores** | Programador de tareas (cron); Fuentes |
-| **Descripción** | Cada 15 minutos el Programador de tareas (cron) lee las cuatro fuentes por su API, unifica los datos por código y actualiza la carga, el avance y las alertas. Cada fuente se lee con su `Conector` (`ConectorRedmine`, `ConectorGitlab`, `ConectorGlpi`, `ConectorRocketChat`). |
-| **Precondiciones** | El backend está en ejecución y `SYNC_CRON` es una expresión válida (`*/15 * * * *` por defecto). Con `USAR_MOCKS=true` las fuentes se leen de `backend/mocks/`. |
-| **Flujo principal** | 1. El Programador de tareas dispara `Sincronizacion.ejecutar()` (también se ejecuta una vez al arrancar el backend).<br>2. La `Sincronizacion` lee en paralelo las cuatro `Fuente` con `leerConReintentos()`, hasta 3 intentos cada una (`SYNC_REINTENTOS`).<br>3. Guarda los datos de cada fuente que respondió como sus últimos datos buenos (`lectura_fuente`).<br>4. Cruza los datos por código (CU-07).<br>5. Calcula la carga y el avance (CU-08) y genera las alertas (CU-09).<br>6. Guarda el resultado y el estado (`ok`, `parcial` o `fallida`), consultable en `GET /api/sincronizacion/estado`. |
-| **Flujos alternativos** | **FA-01 (Ya hay una en curso):** Si una sincronización sigue ejecutándose, la nueva no se inicia.<br>**FA-02 (Fuente caída):** Si una fuente falla tras los reintentos, se extiende con CU-06 y la sincronización termina como `parcial`. |
-| **Excepciones** | **EX-01 (Todas las fuentes fallan):** El estado es `fallida`; el dashboard sigue mostrando los últimos datos guardados.<br>**EX-02 (Error inesperado):** El programador registra el error en el log y lo intenta de nuevo en el siguiente ciclo. |
-| **Postcondiciones** | Las peticiones, indicadores, alertas y registros no reconocidos quedan actualizados en el almacén (memoria o PostgreSQL). |
-| **Requisitos relacionados** | RF-02, RF-03, RF-04, RF-05, RNF-01, RNF-04 |
+| **Descripción** | Lee RedMine, GitLab, GLPI y Rocket Chat como fuentes. Cruza las Peticiones de RedMine con incidentes de GLPI y actividades de GitLab; Rocket Chat aporta notificaciones vinculadas por código a Peticiones reconocidas. Actualiza datos e indicadores cada 15 minutos. |
+| **Precondiciones** | El programador de tareas tiene una expresión cron válida y los conectores de las fuentes están registrados. |
+| **Flujo principal** | 1. El programador de tareas dispara la sincronización según la expresión cron.<br>2. El sistema lee RedMine, GitLab, GLPI y Rocket Chat en paralelo y conserva los datos recibidos por cada conector.<br>3. El sistema cruza las Peticiones de RedMine con GLPI y GitLab, obtiene notificaciones de Rocket Chat que mencionan códigos reconocidos (CU-07), calcula carga y avance (CU-08), genera las alertas correspondientes y guarda el resultado con estado global `ok` si ninguna fuente falla. |
+| **Flujos alternativos** | **FA-01 (Falla una o más fuentes):** Tras agotar tres intentos, CU-06 registra cada fallo y la sincronización continúa con los últimos datos exitosos disponibles en memoria para esa fuente; si no existen, continúa con una lista vacía. El estado global queda `parcial` si falló parte de las fuentes o `fallida` si fallaron todas.<br>**FA-02 (Ya hay una sincronización en ejecución):** El sistema no inicia otra ejecución y devuelve `null`. |
+| **Excepciones** | No se especifican excepciones de negocio adicionales. |
+| **Postcondiciones** | Al terminar la ejecución se guarda el estado global (`ok`, `parcial` o `fallida`), los datos unificados, indicadores, alertas y la cantidad de registros no reconocidos. |
+| **Requisitos relacionados** | RF-02, RF-03, RF-04, RF-05, RF-06, RF-07, RF-08, RF-09, RF-10, RF-12, RNF-01, RNF-04. Incluye CU-07 y CU-08; CU-06 extiende este caso. |
 
 ### CU-06 Registrar fallo de fuente
 
@@ -161,13 +161,13 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **ID** | CU-06 |
 | **Nombre** | Registrar fallo de fuente |
 | **Actores** | Programador de tareas (cron) |
-| **Descripción** | Cuando una fuente no responde tras 3 intentos, la sincronización no se detiene: registra el fallo (`RegistroFallo`) y usa los últimos datos buenos de esa fuente. |
-| **Precondiciones** | Se está ejecutando una sincronización (CU-05). |
-| **Flujo principal** | 1. Una `Fuente` falla 3 veces seguidas (con `SYNC_ESPERA_REINTENTO_MS` entre intentos).<br>2. La `Sincronizacion` crea un `RegistroFallo` con la fuente, la fecha, los intentos y el mensaje de error.<br>3. Recupera los últimos datos buenos de esa fuente (`ultimosDatosFuente()`; en PostgreSQL, tabla `lectura_fuente`).<br>4. Marca la fuente como `con-datos-anteriores` y continúa con CU-07. |
-| **Flujos alternativos** | **FA-01 (Nunca respondió):** Si la fuente no tiene datos anteriores, se marca como `sin-datos` y se continúa con las demás. |
-| **Excepciones** | Ninguna: el fallo de una fuente no interrumpe la sincronización. |
-| **Postcondiciones** | El fallo queda registrado (`GET /api/sincronizacion/estado` → `fallos`) y la sincronización termina como `parcial` (o `fallida` si fallaron todas). |
-| **Requisitos relacionados** | RNF-01 |
+| **Descripción** | Registra el fallo de una Fuente cuando su Conector no logra leerla después de tres intentos y permite que CU-05 continúe usando los últimos datos exitosos disponibles en el almacén en memoria. |
+| **Precondiciones** | CU-05 está leyendo las fuentes y el Conector de una Fuente ha agotado los tres intentos de lectura. |
+| **Flujo principal** | 1. El sistema obtiene el último error de lectura de la Fuente y el número de intentos realizados.<br>2. Registra la Fuente, fecha, número de intentos y mensaje del error en `estadoSincronizacion.fallos`.<br>3. Recupera los últimos datos exitosos disponibles de esa Fuente en el almacén en memoria y los entrega a CU-05 para continuar la sincronización. |
+| **Flujos alternativos** | **FA-01 (Sin datos anteriores):** Si no existe una lectura exitosa previa en el almacén en memoria, CU-05 continúa con una lista vacía para esa Fuente y la marca `sin-datos`; este es un estado individual de la Fuente, no el estado global de sincronización. |
+| **Excepciones** | No se especifican excepciones de negocio adicionales. |
+| **Postcondiciones** | El fallo queda incluido en `estadoSincronizacion.fallos` y se reutilizan los últimos datos exitosos disponibles en memoria; si no existen, la Fuente aporta cero registros a esa ejecución. Con PostgreSQL y conectores reales, `RepositorioSincronizacionPostgres` también guarda esos datos en `snapshot_fuente`, así que se recuperan al reiniciar el backend; con mocks, solo están en memoria. |
+| **Requisitos relacionados** | RNF-01. Extiende CU-05. |
 
 ### CU-07 Cruzar datos por código
 
@@ -178,13 +178,13 @@ Cada responsable completa la ficha de sus casos de uso. Los escenarios en Gherki
 | **ID** | CU-07 |
 | **Nombre** | Cruzar datos por código |
 | **Actores** | Programador de tareas (cron) |
-| **Descripción** | Une los datos de las cuatro fuentes usando el código de la petición de RedMine, sin duplicar. Lo que no se puede cruzar se guarda como `RegistroNoReconocido` para que lo revise el Administrador TI (CU-11). |
-| **Precondiciones** | La sincronización obtuvo los datos de las fuentes (CU-05, y CU-06 si alguna falló). |
-| **Flujo principal** | 1. El `normalizador` toma las peticiones de RedMine como fuente principal y reconoce su código: `POA-AAAA-NNN`, `REC-AAAA-NNN`, `INC-AAAA-NNN` o `iniciativa.ti.NNN`.<br>2. Clasifica cada `Peticion` por `TipoTrabajo` y `Etapa`, y la asigna al `Desarrollador` según su usuario de RedMine.<br>3. Une los incidentes de GLPI con la petición del mismo código, sin crear duplicados.<br>4. Asocia los commits, merge requests y pipelines de GitLab a la petición cuyo código aparece en la rama (`ActividadCodigo`).<br>5. Asocia las notificaciones de Rocket Chat que mencionan un código.<br>6. Calcula los módulos del core con cambios (`ModuloCore`). |
-| **Flujos alternativos** | **FA-01 (Petición repetida en RedMine):** Se conserva la primera y se descartan las demás. |
-| **Excepciones** | **EX-01 (Dato sin código válido):** Una petición de RedMine sin código, tipo o etapa válidos, un incidente de GLPI o una rama de GitLab que no corresponde a ninguna petición se guardan como `RegistroNoReconocido` con su fuente, código original y motivo. |
-| **Postcondiciones** | Cada `Peticion` tiene un solo registro con sus actividades, módulos y desarrollador; los datos no cruzados quedan pendientes de revisión (CU-11). |
-| **Requisitos relacionados** | RF-06, RF-07, RF-09 |
+| **Descripción** | Extrae códigos de Petición (`POA-AAAA-NNN`, `REC-AAAA-NNN`, `INC-AAAA-NNN` e `iniciativa.ti.NNN`) sin distinguir mayúsculas y minúsculas; normaliza los tres formatos estándar a mayúsculas e `iniciativa.ti` a minúsculas. Usa el código para cruzar RedMine con GLPI y GitLab, eliminar duplicados y separar datos no reconocidos. En GitLab busca primero en la rama y, si no encuentra código, en el título. |
+| **Precondiciones** | CU-05 obtuvo los datos disponibles de las fuentes y los desarrolladores están disponibles para relacionar sus identificadores de origen. |
+| **Flujo principal** | 1. El sistema normaliza las peticiones de RedMine y valida código, tipo de trabajo y etapa; si hay duplicados, conserva el primer registro que supera las tres validaciones.<br>2. Cruza los incidentes de GLPI y las actividades de GitLab con las peticiones por código, relacionando los desarrolladores cuando hay coincidencia. Para GitLab busca primero en la rama y luego en el título si la rama no contiene código.<br>3. Obtiene de RedMine el campo `Módulo del core`; incluye sus módulos en `modulosConCambios` solo para peticiones con actividad GitLab asociada. Devuelve también las notificaciones de Rocket Chat que mencionan códigos reconocidos. |
+| **Flujos alternativos** | **FA-01 (Registro no reconocido):** Se crea `RegistroNoReconocido` si RedMine tiene código inválido o ausente, tipo desconocido o etapa inválida; si GLPI no tiene código o este no corresponde a una Petición; o si GitLab no permite extraer un código o el código extraído no corresponde a una Petición. El registro incluye fuente, `codigoOriginal`, motivo, fecha de detección y `revisado = false`. En RedMine, `codigoOriginal` es el texto del campo Código o `redmine#id` si no existe; en GLPI, es el código o `glpi#id` si no existe; en GitLab, es el nombre de la rama incluso si el código se extrajo del título. Los mensajes de Rocket Chat sin Petición coincidente no generan `RegistroNoReconocido`. |
+| **Excepciones** | No se especifican excepciones de negocio adicionales. |
+| **Postcondiciones** | Se devuelven peticiones unificadas sin duplicados, proyectos, módulos del core con cambios, notificaciones coincidentes y registros no reconocidos para revisión (CU-11). |
+| **Requisitos relacionados** | RF-06, RF-07, RF-09. Es incluido por CU-05; los registros no reconocidos quedan disponibles para CU-11. |
 
 ### CU-08 Calcular carga y avance
 

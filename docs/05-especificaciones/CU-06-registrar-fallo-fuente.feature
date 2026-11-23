@@ -2,21 +2,21 @@
 # Responsable: Bryan. Requisitos: RNF-01. Extiende CU-05.
 Característica: CU-06 Registrar fallo de fuente
   Como Programador de tareas (cron)
-  Quiero registrar cuando una fuente no responde y seguir con sus últimos datos
-  Para que la caída de una herramienta no deje el dashboard vacío
+  Quiero registrar una fuente que no pudo leerse después de tres intentos
+  Para continuar la sincronización con los últimos datos exitosos disponibles en el almacén en memoria
 
-  Escenario: Una fuente falla tras 3 intentos y hay datos anteriores
-    Dado que GLPI respondió en la sincronización anterior
-    Y ahora GLPI no responde
-    Cuando la sincronización intenta leer GLPI 3 veces sin éxito
-    Entonces se registra un fallo de GLPI con 3 intentos y el mensaje de error
-    Y se usan los últimos datos guardados de GLPI
-    Y el estado de GLPI es "con-datos-anteriores"
-    Y el estado de la sincronización es "parcial"
+  Escenario: Registrar el fallo y reutilizar los últimos datos buenos
+    Dado que el almacén en memoria conserva datos de una lectura exitosa anterior de una fuente
+    Y su conector devuelve un error en cada uno de los tres intentos de lectura
+    Cuando CU-05 termina los reintentos de esa fuente
+    Entonces el sistema registra la fuente, la fecha, tres intentos y el mensaje del último error
+    Y recupera los últimos datos exitosos disponibles en el almacén en memoria para esa fuente
+    Y permite que CU-05 continúe la sincronización con esos datos
 
-  Escenario: Una fuente falla y nunca había respondido
-    Dado que Rocket Chat nunca respondió
-    Cuando la sincronización intenta leer Rocket Chat 3 veces sin éxito
-    Entonces se registra un fallo de Rocket Chat
-    Y el estado de Rocket Chat es "sin-datos"
-    Y las demás fuentes se procesan con normalidad
+  Escenario: Registrar el fallo cuando no hay datos anteriores
+    Dado que el almacén en memoria no tiene datos de una lectura exitosa anterior para una fuente
+    Y su conector devuelve un error en cada uno de los tres intentos de lectura
+    Cuando CU-05 termina los reintentos de esa fuente
+    Entonces el sistema registra el fallo con tres intentos y el mensaje del último error
+    Y marca el estado individual de esa fuente como "sin-datos"
+    Y permite que CU-05 continúe con una lista vacía para esa fuente
