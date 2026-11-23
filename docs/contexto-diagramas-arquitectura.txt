@@ -61,8 +61,10 @@ ACTIVIDADES DE APOYO (franja superior, sostienen a todas las primarias)
 COMO IMPACTA EL SISTEMA (texto para la nota del diagrama)
   - Area de TI: 1 PMO + 7 desarrolladores.
   - TI desarrolla y mantiene el software que soporta las primarias (modulos del
-    core financiero, por ejemplo Captaciones, Creditos, Cajas, Canales digitales,
-    Contabilidad, Reportes regulatorios).
+    core financiero). Ejemplos supuestos, por validar con la cooperativa:
+    Captaciones, Creditos, Cajas, Canales digitales, Contabilidad, Reportes
+    regulatorios. Son los nombres de los datos de prueba (backend/mocks), no la
+    lista real del core.
   - Hoy el trabajo esta repartido en 4 herramientas sin conexion: RedMine
     (peticiones POA/REC/Iniciativa/Incidente), GitLab (codigo, Gitflow), GLPI
     (mesa de ayuda) y Rocket Chat (chat y alertas). El cruce es manual.
@@ -118,7 +120,7 @@ Desperdicios que elimina (para la nota del flujo de valor):
 
 Nivel 1 = dominio. Nivel 2 = capacidad. Entre corchetes: donde vive en el codigo.
 
-D1. INTEGRACION  (Bryan)
+D1. INTEGRACION
   C1.1 Lectura de RedMine (peticiones y etapa, incremental)  [conectores/ConectorRedmine.js] RF-02
   C1.2 Lectura de GitLab (commits, MR, pipelines)            [conectores/ConectorGitlab.js]  RF-03
   C1.3 Lectura de GLPI (incidentes)                          [conectores/ConectorGlpi.js]    RF-04
@@ -126,30 +128,31 @@ D1. INTEGRACION  (Bryan)
   C1.5 Sincronizacion programada cada 15 min                 [sincronizacion/programador.js] RNF-01
   C1.6 Tolerancia a fallos (3 reintentos + ultimos datos)    [sincronizacion/Sincronizacion.js] RNF-01
   C1.7 Lectura incremental con cursor y snapshot             [AlmacenMemoria.cursorFuente, snapshot_fuente]
+  C1.10 Persistencia de la sincronizacion en PostgreSQL      [datos/RepositorioSincronizacionPostgres.js]
   C1.8 Cruce por codigo y deduplicacion                      [sincronizacion/normalizador.js] RF-06, RF-07, RF-09
   C1.9 Extensibilidad por conector (nueva fuente = 1 clase)  [conectores/Conector.js, conectores/index.js] RNF-04
 
-D2. DATOS Y ALERTAS  (Cristina)
+D2. DATOS Y ALERTAS
   C2.1 Calculo de carga por desarrollador y tipo             [datos/carga.js calcularCarga] RF-10
   C2.2 Estimacion de avance por etapa (configurable)         [datos/avance.js, AVANCE_POR_ETAPA] RF-08
-  C2.3 Gestion del umbral                                    [Umbral, PUT /api/umbral] RF-12
+  C2.3 Comparacion de la carga con el umbral                 [IndicadorCarga.superaUmbral] RF-12
   C2.4 Generacion y envio de alertas sin duplicados          [datos/alertas.js] RF-12
-  C2.5 Persistencia transaccional en PostgreSQL              [datos/almacen-postgres.js AlmacenPostgres]
-  C2.6 Revision de registros no reconocidos                  [RegistroNoReconocido, /api/registros-no-reconocidos] RF-06
+  C2.5 Persistencia de datos y alertas en PostgreSQL         [datos/almacen-postgres.js AlmacenPostgres]
+  C2.6 Deteccion de registros no reconocidos                 [RegistroNoReconocido] RF-06
 
-D3. SEGURIDAD / SSO  (Camilo)
+D3. SEGURIDAD / SSO
   C3.1 Autenticacion centralizada (SSO, hoy simulado)        [auth/sso-mock.js ServicioSesiones] RF-01
   C3.2 Gestion de sesion con expiracion (480 min)            [ServicioSesiones, SSO_DURACION_SESION_MIN]
   C3.3 Autorizacion por rol y permisos                       [auth/roles.js, auth/middleware.js] RNF-02
   C3.4 Restriccion "solo propios" para Técnico               [datos/filtro.js aplicarRestriccionRol]
   C3.5 Credenciales solo en variables de entorno             [config.js, .env.example] RNF-02
 
-D4. ADMINISTRACION  (Administrador TI)
-  C4.1 Configurar umbral                                     CU-10
-  C4.2 Revisar y vincular registros no reconocidos           CU-11
+D4. ADMINISTRACION  (actor: Administrador TI, permiso configurar)
+  C4.1 Configurar umbral                                     CU-10 [PUT /api/umbral] RF-12
+  C4.2 Revisar registros no reconocidos                      CU-11 [GET y PATCH /api/registros-no-reconocidos] RF-06
   C4.3 Monitorear el estado de la sincronizacion             GET /api/sincronizacion/estado
 
-D5. REPORTES Y CONSULTA  (Camilo)
+D5. REPORTES Y CONSULTA
   C5.1 Dashboard de carga y avance                           [frontend/src/paginas/Dashboard.jsx] RF-07..RF-10
   C5.2 Filtros (desarrollador, tipo, proyecto, modulo, fechas) [PanelFiltros.jsx, filtro.js] RF-11
   C5.3 Visualizacion grafica de carga                        [GraficoCarga.jsx, Chart.js] RF-10
