@@ -66,40 +66,40 @@ Cada uno sigue el camino actor → componente del frontend → endpoint → serv
 
 | Caso de uso | Fuente | Imagen |
 |---|---|---|
-| CU-01 Iniciar sesión con SSO | [mmd](06-secuencia/CU-01-iniciar-sesion.mmd) | [png](img/CU-01-iniciar-sesion.png) |
-| CU-02 Filtrar información | [mmd](06-secuencia/CU-02-filtrar-informacion.mmd) | [png](img/CU-02-filtrar-informacion.png) |
-| CU-03 Consultar dashboard de carga y avance | [mmd](06-secuencia/CU-03-consultar-dashboard.mmd) | [png](img/CU-03-consultar-dashboard.png) |
-| CU-04 Exportar reporte «pendiente» | [mmd](06-secuencia/CU-04-exportar-reporte.mmd) | [png](img/CU-04-exportar-reporte.png) |
-| CU-05 Sincronizar fuentes | [mmd](06-secuencia/CU-05-sincronizar-fuentes.mmd) | [png](img/CU-05-sincronizar-fuentes.png) |
-| CU-06 Registrar fallo de fuente | [mmd](06-secuencia/CU-06-registrar-fallo.mmd) | [png](img/CU-06-registrar-fallo.png) |
-| CU-07 Cruzar datos por código | [mmd](06-secuencia/CU-07-cruzar-datos.mmd) | [png](img/CU-07-cruzar-datos.png) |
-| CU-08 Calcular carga y avance | [mmd](06-secuencia/CU-08-calcular-carga.mmd) | [png](img/CU-08-calcular-carga.png) |
-| CU-09 Enviar alerta | [mmd](06-secuencia/CU-09-enviar-alerta.mmd) | [png](img/CU-09-enviar-alerta.png) |
-| CU-10 Configurar umbral | [mmd](06-secuencia/CU-10-configurar-umbral.mmd) | [png](img/CU-10-configurar-umbral.png) |
-| CU-11 Revisar registros no reconocidos | [mmd](06-secuencia/CU-11-revisar-no-reconocidos.mmd) | [png](img/CU-11-revisar-no-reconocidos.png) |
+| CU-01 Iniciar sesión con SSO | [mmd](06-secuencia/CU-01-iniciar-sesion.mmd) | [png](img/06-CU-01-iniciar-sesion.png) |
+| CU-02 Filtrar información | [mmd](06-secuencia/CU-02-filtrar-informacion.mmd) | [png](img/06-CU-02-filtrar-informacion.png) |
+| CU-03 Consultar dashboard de carga y avance | [mmd](06-secuencia/CU-03-consultar-dashboard.mmd) | [png](img/06-CU-03-consultar-dashboard.png) |
+| CU-04 Exportar reporte «pendiente» | [mmd](06-secuencia/CU-04-exportar-reporte.mmd) | [png](img/06-CU-04-exportar-reporte.png) |
+| CU-05 Sincronizar fuentes | [mmd](06-secuencia/CU-05-sincronizar-fuentes.mmd) | [png](img/06-CU-05-sincronizar-fuentes.png) |
+| CU-06 Registrar fallo de fuente | [mmd](06-secuencia/CU-06-registrar-fallo.mmd) | [png](img/06-CU-06-registrar-fallo.png) |
+| CU-07 Cruzar datos por código | [mmd](06-secuencia/CU-07-cruzar-datos.mmd) | [png](img/06-CU-07-cruzar-datos.png) |
+| CU-08 Calcular carga y avance | [mmd](06-secuencia/CU-08-calcular-carga.mmd) | [png](img/06-CU-08-calcular-carga.png) |
+| CU-09 Enviar alerta | [mmd](06-secuencia/CU-09-enviar-alerta.mmd) | [png](img/06-CU-09-enviar-alerta.png) |
+| CU-10 Configurar umbral | [mmd](06-secuencia/CU-10-configurar-umbral.mmd) | [png](img/06-CU-10-configurar-umbral.png) |
+| CU-11 Revisar registros no reconocidos | [mmd](06-secuencia/CU-11-revisar-no-reconocidos.mmd) | [png](img/06-CU-11-revisar-no-reconocidos.png) |
 
 ### CU-01 Iniciar sesión con SSO
-![CU-01](img/CU-01-iniciar-sesion.png)
+![CU-01](img/06-CU-01-iniciar-sesion.png)
 ### CU-02 Filtrar información
-![CU-02](img/CU-02-filtrar-informacion.png)
+![CU-02](img/06-CU-02-filtrar-informacion.png)
 ### CU-03 Consultar dashboard de carga y avance
-![CU-03](img/CU-03-consultar-dashboard.png)
+![CU-03](img/06-CU-03-consultar-dashboard.png)
 ### CU-04 Exportar reporte «pendiente»
-![CU-04](img/CU-04-exportar-reporte.png)
+![CU-04](img/06-CU-04-exportar-reporte.png)
 ### CU-05 Sincronizar fuentes
-![CU-05](img/CU-05-sincronizar-fuentes.png)
+![CU-05](img/06-CU-05-sincronizar-fuentes.png)
 ### CU-06 Registrar fallo de fuente
-![CU-06](img/CU-06-registrar-fallo.png)
+![CU-06](img/06-CU-06-registrar-fallo.png)
 ### CU-07 Cruzar datos por código
-![CU-07](img/CU-07-cruzar-datos.png)
+![CU-07](img/06-CU-07-cruzar-datos.png)
 ### CU-08 Calcular carga y avance
-![CU-08](img/CU-08-calcular-carga.png)
+![CU-08](img/06-CU-08-calcular-carga.png)
 ### CU-09 Enviar alerta
-![CU-09](img/CU-09-enviar-alerta.png)
+![CU-09](img/06-CU-09-enviar-alerta.png)
 ### CU-10 Configurar umbral
-![CU-10](img/CU-10-configurar-umbral.png)
+![CU-10](img/06-CU-10-configurar-umbral.png)
 ### CU-11 Revisar registros no reconocidos
-![CU-11](img/CU-11-revisar-no-reconocidos.png)
+![CU-11](img/06-CU-11-revisar-no-reconocidos.png)
 
 ## 7. Componentes
 
