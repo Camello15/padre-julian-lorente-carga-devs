@@ -1,7 +1,7 @@
 # language: es
 # Responsable: Camilo. Requisitos: RF-07, RF-08, RF-09, RF-10, RNF-03. Incluye CU-01 y CU-02.
 Característica: CU-03 Consultar dashboard de carga y avance
-  Como PMO o usuario
+  Como usuario con rol PMO, Técnico, Administrativo o Administrador TI
   Quiero ver en un solo lugar la carga y el avance de cada desarrollador
   Para no cruzar datos a mano entre RedMine, GitLab, GLPI y Rocket Chat
 
