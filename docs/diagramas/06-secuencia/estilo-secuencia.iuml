@@ -1,0 +1,40 @@
+' Estilo común de los diagramas de secuencia (estereotipos de análisis).
+!include ../estilo.iuml
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam sequence {
+  LifeLineBorderColor #4A5A75
+  ParticipantBorderColor #4A6FA5
+  ParticipantBackgroundColor #EEF3FB
+  BoxBorderColor #4A5A75
+  GroupBorderColor #4A5A75
+  GroupBackgroundColor #F4F6F9
+}
+skinparam boundary {
+  BackgroundColor #FFF4E6
+  BorderColor #B26B00
+}
+skinparam control {
+  BackgroundColor #EEF3FB
+  BorderColor #4A6FA5
+}
+skinparam entity {
+  BackgroundColor #EAF6EE
+  BorderColor #2E7D4F
+}
+skinparam participant<<vista>> {
+  BackgroundColor #F3EEFB
+  BorderColor #6A4FA5
+}
+skinparam note {
+  BackgroundColor #FFFBEA
+  BorderColor #B2A35A
+}
+autonumber
+legend bottom right
+  |= Estereotipo |= Significado |
+  | «vista» | Pantalla o componente React que ve el usuario |
+  | «borde» | Frontera del sistema: cliente HTTP, endpoint, conector o disparador |
+  | «controlador» | Coordina el caso de uso: rutas, servicios y lógica |
+  | «entidad» | Datos del dominio y almacenes |
+endlegend

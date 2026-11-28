@@ -15,7 +15,8 @@ interface "API REST /api\n(JSON + Bearer)" as IAPI
 component "API\n(Node.js 22 + Express 5)" as API {
   component "rutas\n(auth, datos,\nsincronizacion)" as RUT
   component "auth\n(ServicioSesiones, Rol,\nrequierePermiso)" as AUT
-  component "sincronizacion\n(Sincronizacion,\nnormalizador, programador)" as SIN
+  component "sincronizacion\n(Sincronizacion, programador)" as SIN
+  component "limpieza de datos\n(normalizador: extraerCodigo,\nunificar, normalizarClave)" as LIM
   interface "IConector\nleerDatos(desde)" as ICON
   component "conectores\n(ConectorRedmine, ConectorGitlab,\nConectorGlpi, ConectorRocketChat)" as CON
   component "datos\n(carga, avance, alertas, filtro,\nAlmacenMemoria, AlmacenPostgres,\nRepositorioSincronizacionPostgres)" as DAT
@@ -41,6 +42,8 @@ IAPI -- RUT
 RUT ..> AUT
 RUT ..> DAT
 SIN ..> DAT
+SIN ..> LIM : unificar(datosPorFuente)\n(CU-07)
+LIM ..> DAT : Peticion, ActividadCodigo,\nRegistroNoReconocido,\ncalcularAvance
 SIN --( ICON
 ICON -- CON
 AUT ..> CFG
@@ -57,6 +60,13 @@ IREST -- GP
 IREST -- RC
 DAT ..> RC : envía alertas (CU-09)
 AUT ..> SSO : valida identidad
+
+note bottom of LIM
+  Limpieza de datos (RF-06, RF-07, RF-09):
+  normaliza códigos, elimina duplicados,
+  cruza por código y separa los
+  registros no reconocidos (CU-11).
+end note
 
 note bottom of ICON
   Patrón Adapter (AD-01):

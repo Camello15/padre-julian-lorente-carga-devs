@@ -1,0 +1,43 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-01 Iniciar sesión con SSO
+actor "Usuario de la\ncooperativa" as U
+participant "Login.jsx /\nApp.jsx" as V <<vista>>
+boundary "api.js" as B <<borde>>
+control "rutas/auth.js" as R <<controlador>>
+control "ServicioSesiones" as S <<controlador>>
+entity "Rol\n(roles.js)" as RO <<entidad>>
+entity "Sesion" as SE <<entidad>>
+boundary "SSO de la\ncooperativa" as SSO <<borde>>
+
+U -> V : Elige rol de prueba y pulsa\n"Ingresar con SSO de la cooperativa"
+V -> B : iniciarSesion(rol)
+B -> R : POST /api/auth/login {rol}
+alt SSO_MODO = mock (prototipo)
+  R -> S : iniciarSesionMock(rol)
+  S -> RO : obtenerRol(clave)
+  RO --> S : Rol {clave, permisos, soloPropios}
+  S -> SE ** : crear(token, inicio, expira = inicio + 480 min, usuario)
+  S --> R : Sesion
+  R --> B : 201 {token, expira, usuario}
+  B --> V : sesión
+  V --> U : Guarda la sesión en sessionStorage\ny muestra Dashboard.jsx
+else rol inválido
+  R --> B : 400 "Elige un rol de prueba válido"
+  B --> V : error
+  V --> U : Muestra el mensaje de error
+else SSO real «pendiente»
+  R ->> SSO : Redirigir y validar token\n(OIDC/SAML por confirmar)
+  R --> B : 501 No implementado
+end
+opt Cerrar sesión
+  U -> V : Pulsa "Cerrar sesión"
+  V -> B : cerrarSesion(token)
+  B -> R : POST /api/auth/logout
+  R -> S : cerrarSesion(token)
+  S -> SE !! : eliminar
+  R --> B : 204
+  B --> V : ok
+  V --> U : Vuelve a Login.jsx
+end
+@enduml
