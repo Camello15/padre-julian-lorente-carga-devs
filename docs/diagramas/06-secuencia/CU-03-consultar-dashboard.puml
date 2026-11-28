@@ -1,0 +1,33 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-03 Consultar dashboard de carga y avance
+actor "PMO / Técnico /\nAdministrativo / Admin TI" as U
+participant "Dashboard.jsx\n(ResumenCarga, GraficoCarga,\nPanelAlertas, TablaPeticiones)" as V <<vista>>
+boundary "api.js" as B <<borde>>
+control "rutas/datos.js" as R <<controlador>>
+control "carga.js" as C <<controlador>>
+entity "AlmacenMemoria" as AM <<entidad>>
+entity "IndicadorCarga" as IC <<entidad>>
+
+note over U, IC : Incluye CU-01 (sesión) y CU-02 (filtros)
+U -> V : Abre el dashboard
+V -> B : pedir("/catalogos"), pedir("/alertas")
+B -> R : GET /api/catalogos, GET /api/alertas
+R -> AM : desarrolladores, proyectos, módulos, alertas
+AM --> R : datos
+R --> B : 200
+V -> B : pedir("/carga" + consulta), pedir("/peticiones" + consulta)
+B -> R : GET /api/carga, GET /api/peticiones
+R -> AM : peticiones, umbral, estadoSincronizacion
+AM --> R : datos en caché
+R -> C : calcularCarga(peticionesFiltradas,\ndesarrolladoresVisibles, umbral)
+C -> IC ** : new IndicadorCarga(...)
+C --> R : List<IndicadorCarga>
+R --> B : 200 {resumen, indicadores, umbral,\nmodulosConCambios} y {peticiones}
+B --> V : datos
+V --> U : Resumen, gráfico de carga, alertas\ny tabla de peticiones con su etapa
+note over V, AM : Las lecturas salen de la caché en memoria; PostgreSQL no se consulta aquí.
+opt PMO pulsa "Exportar"
+  note over U, V : «extend» CU-04 Exportar reporte (pendiente)
+end
+@enduml

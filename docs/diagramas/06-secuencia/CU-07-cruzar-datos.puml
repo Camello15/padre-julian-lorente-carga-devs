@@ -1,0 +1,53 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-07 Cruzar datos por código
+control "Sincronizacion" as S <<controlador>>
+control "normalizador.js\n(limpieza de datos)" as N <<controlador>>
+control "avance.js" as AV <<controlador>>
+entity "Peticion /\nActividadCodigo" as PE <<entidad>>
+entity "RegistroNoReconocido" as RN <<entidad>>
+entity "AlmacenMemoria" as AM <<entidad>>
+control "rutas/datos.js" as RD <<controlador>>
+boundary "api.js" as BA <<borde>>
+participant "PanelAdministracionTI.jsx" as V <<vista>>
+
+note over S, RN : «include» de CU-05. Todo ocurre en memoria.
+S -> N : unificar({redmine, gitlab, glpi, rocketchat}, desarrolladores)
+loop Cada issue de RedMine (fuente principal)
+  N -> N : extraerCodigo("Código"), tipo por tracker,\netapa por campo "Etapa"
+  alt código, tipo y etapa válidos
+    N -> AV : calcularAvance(etapa)
+    AV --> N : % de avance
+    N -> PE ** : new Peticion (si el código se repite, conserva la primera)
+  else inválido
+    N -> RN ** : new RegistroNoReconocido('redmine', motivo)
+  end
+end
+loop Cada ticket de GLPI
+  N -> N : extraerCodigo(name)
+  alt existe la Peticion
+    N -> PE : se une a la Peticion (sin duplicar)
+  else no existe
+    N -> RN : new RegistroNoReconocido('glpi')
+  end
+end
+loop Cada commit, merge request o pipeline de GitLab
+  N -> N : extraerCodigo(rama) o extraerCodigo(título)
+  alt existe la Peticion
+    N -> PE : actividades += ActividadCodigo
+  else no existe
+    N -> RN : new RegistroNoReconocido('gitlab', codigoOriginal = rama)
+  end
+end
+loop Cada mensaje de Rocket Chat con código reconocido
+  N -> N : agrega a notificaciones
+end
+N --> S : {peticiones, proyectos, modulosConCambios,\nnotificaciones, registrosNoReconocidos}
+S -> AM : guardarResultado(...) (en caché)
+V -> BA : pedir("/registros-no-reconocidos")
+BA -> RD : GET /api/registros-no-reconocidos
+RD -> AM : listarRegistrosNoReconocidos()
+AM --> RD : registros pendientes
+RD --> BA : 200 {total, registros}
+BA --> V : lista para revisión (CU-11)
+@enduml

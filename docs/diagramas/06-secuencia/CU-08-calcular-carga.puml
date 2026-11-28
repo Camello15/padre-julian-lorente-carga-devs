@@ -1,0 +1,37 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-08 Calcular carga y avance
+control "Sincronizacion" as S <<controlador>>
+control "carga.js" as C <<controlador>>
+control "avance.js" as AV <<controlador>>
+entity "Peticion" as PE <<entidad>>
+entity "IndicadorCarga" as IC <<entidad>>
+entity "AlmacenPostgres" as AP <<entidad>>
+database "PostgreSQL" as BD
+control "rutas/datos.js" as RD <<controlador>>
+boundary "api.js" as BA <<borde>>
+participant "GraficoCarga.jsx" as V <<vista>>
+
+note over S, BD : «include» de CU-05. También se recalcula en CU-10.
+S -> C : calcularCarga(peticiones, desarrolladores, umbral)
+loop Cada Desarrollador
+  C -> PE : peticiones con estado 'abierta'
+  PE --> C : peticionesAbiertas y porTipo
+  C -> AV : avancePromedio(abiertas)
+  AV --> C : promedio (10/40/70/90/100 % según Etapa)
+  C -> IC ** : new IndicadorCarga(superaUmbral =\npeticionesAbiertas > umbral.maxPeticiones)
+end
+C --> S : List<IndicadorCarga>
+opt algún IndicadorCarga.superaUmbral
+  note over S : «extend» CU-09 Enviar alerta
+end
+S -> AP : guardarResultado({sincronizacionId, indicadores, ...})
+AP -> BD : INSERT indicador_carga
+V -> BA : pedir("/carga" + consulta)
+BA -> RD : GET /api/carga
+RD -> AP : indicadores vigentes (caché)
+AP --> RD : List<IndicadorCarga>
+RD --> BA : 200 {indicadores}
+BA --> V : indicadores
+note over V : Barras por desarrollador y tipo de trabajo
+@enduml

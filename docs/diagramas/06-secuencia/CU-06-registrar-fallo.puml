@@ -1,0 +1,44 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-06 Registrar fallo de fuente
+control "Sincronizacion" as S <<controlador>>
+boundary "Conector" as CO <<borde>>
+participant "Fuente externa" as EX <<sistema externo>>
+entity "RegistroFallo" as RF <<entidad>>
+entity "AlmacenMemoria" as AM <<entidad>>
+entity "RepositorioSincronizacion\nPostgres" as RP <<entidad>>
+database "PostgreSQL" as BD
+control "rutas/datos.js" as RD <<controlador>>
+boundary "api.js" as BA <<borde>>
+participant "Dashboard.jsx\n(ResumenCarga)" as V <<vista>>
+actor "Usuario" as U
+
+note over S, BD : «extend» de CU-05: la fuente no responde
+loop intento 1..3 (SYNC_REINTENTOS)
+  S -> CO : leerDatos(desde)
+  CO -> EX : GET REST
+  EX --> CO : error o tiempo agotado
+  CO --> S : Error
+  S -> S : espera SYNC_ESPERA_REINTENTO_MS
+end
+S -> RF ** : new RegistroFallo(fuente, fecha, intentos: 3, mensaje)
+S -> AM : ultimosDatosFuente(nombre)
+alt hay datos anteriores
+  AM --> S : últimos datos buenos
+  S -> S : fuente.estado = 'con-datos-anteriores'
+else no hay datos
+  AM --> S : null
+  S -> S : fuente.estado = 'sin-datos'
+end
+S -> AM : estadoSincronizacion.fallos += RegistroFallo (máx. 50)
+S -> RP : finalizarSincronizacion({estado: 'parcial' | 'fallida', fallos})
+RP -> BD : INSERT registro_fallo
+U -> V : Abre el dashboard
+V -> BA : pedir("/carga" + consulta)
+BA -> RD : GET /api/carga
+RD -> AM : estadoSincronizacion
+AM --> RD : 'parcial'
+RD --> BA : 200 {resumen}
+BA --> V : resumen
+V --> U : "Alguna fuente no respondió;\nse muestran sus últimos datos."
+@enduml

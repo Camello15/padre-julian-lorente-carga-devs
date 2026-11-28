@@ -1,0 +1,36 @@
+@startuml
+!include ../06-secuencia/estilo-secuencia.iuml
+title AlmacenPostgres::guardarResultado() (CU-08 y CU-09)
+control "Sincronizacion" as S <<controlador>>
+entity "AlmacenPostgres" as AP <<entidad>>
+entity "AlmacenMemoria\n(super)" as AM <<entidad>>
+database "PostgreSQL" as BD
+
+S -> AP : guardarResultado({sincronizacionId, proyectos,\npeticiones, indicadores, alertas, registrosNoReconocidos})
+AP -> AM : super.guardarResultado(resultado)
+note right of AM : Actualiza la caché y conserva\nlas revisiones de CU-11
+AP -> BD : BEGIN
+opt hay peticiones
+  AP -> AP : guardarPeticiones(c, proyectos, peticiones)
+  AP -> BD : UPSERT proyecto, modulo_core, peticion,\npeticion_modulo, actividad_codigo
+end
+opt hay indicadores
+  AP -> AP : guardarIndicadores(c, indicadores, sincronizacionId)
+  AP -> BD : INSERT indicador_carga RETURNING id
+  BD --> AP : idsIndicador
+end
+opt hay alertas
+  AP -> AP : guardarAlertas(c, alertas, idsIndicador)
+  AP -> BD : INSERT alerta (indicador_carga_id, ...)
+end
+opt hay registros no reconocidos
+  AP -> AP : guardarRegistrosNoReconocidos(c, sincronizacionId)
+  AP -> BD : UPSERT registro_no_reconocido\n(no pisa revisado ni peticion_asignada)
+end
+alt sin errores
+  AP -> BD : COMMIT
+else error
+  AP -> BD : ROLLBACK
+end
+AP --> S : Promise<void>
+@enduml

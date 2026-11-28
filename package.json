@@ -1,0 +1,23 @@
+{
+  "name": "padre-julian-lorente-carga-devs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proyecto académico UTPL – Reto 2 COAC Padre Julián Lorente: dashboard que centraliza la carga de trabajo de los desarrolladores.",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=20.12"
+  },
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "test:cobertura": "npm run test:cobertura --workspaces",
+    "build": "npm run build -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}

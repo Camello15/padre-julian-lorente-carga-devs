@@ -1,0 +1,46 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-02 Filtrar información
+actor "Usuario de la\ncooperativa" as U
+participant "PanelFiltros.jsx" as VF <<vista>>
+participant "Dashboard.jsx" as VD <<vista>>
+boundary "api.js" as B <<borde>>
+control "requiereSesion\n(ServicioSesiones)" as M <<controlador>>
+control "rutas/datos.js" as R <<controlador>>
+control "filtro.js" as FI <<controlador>>
+entity "Filtro" as F <<entidad>>
+entity "AlmacenMemoria\n(Peticion, Desarrollador)" as AM <<entidad>>
+
+note over U, AM : Requiere CU-01 (Authorization: Bearer token)
+U -> VF : Elige desarrollador, tipo, proyecto,\nmódulo del core, desde y hasta
+VF -> VD : onCambiar(filtros)
+VD -> VD : construirConsulta(filtros)
+VD -> B : pedir("/carga?...") y pedir("/peticiones?...")
+B -> M : GET /api/carga, GET /api/peticiones
+M -> M : obtenerSesion(token)
+alt sesión inválida o expirada
+  M --> B : 401
+  B --> VD : ErrorSesion
+  VD --> U : Vuelve a Login.jsx
+else sesión válida
+  M -> R : req.usuario
+  R -> FI : crearFiltro(query)
+  FI -> F ** : new Filtro(...)
+  alt filtro inválido
+    FI --> R : FiltroInvalidoError
+    R --> B : 400 con el motivo
+    B --> VD : error
+    VD --> U : Muestra el motivo
+  else filtro válido
+    R -> FI : aplicarRestriccionRol(filtro, usuario)
+    note right of FI : Técnico: desarrolladorId = el suyo\n(se impone en el servidor)
+    R -> AM : peticiones, desarrolladores
+    AM --> R : datos en caché
+    R -> FI : filtrarPeticiones(peticiones, filtro)
+    FI --> R : peticiones filtradas
+    R --> B : 200 {filtro, peticiones}\n{filtro, umbral, resumen, indicadores}
+    B --> VD : datos filtrados
+    VD --> U : Actualiza resumen, gráfico y tabla
+  end
+end
+@enduml

@@ -1,0 +1,41 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-09 Enviar alerta
+control "Sincronizacion" as S <<controlador>>
+control "alertas.js" as AL <<controlador>>
+entity "Alerta" as A <<entidad>>
+boundary "Rocket Chat\n(chat.postMessage)" as RC <<borde>>
+entity "AlmacenPostgres" as AP <<entidad>>
+database "PostgreSQL" as BD
+control "rutas/datos.js" as R <<controlador>>
+boundary "api.js" as B <<borde>>
+participant "PanelAlertas.jsx" as V <<vista>>
+actor "Usuario" as U
+
+note over S, BD : «extend» de CU-08: peticionesAbiertas > Umbral.maxPeticiones (por defecto 6)
+S -> AL : generarAlertas(indicadores, umbral)
+AL -> A ** : una Alerta por IndicadorCarga con superaUmbral
+AL --> S : alertas
+loop Cada Alerta
+  S -> AL : enviarAlertaRocketChat(alerta)
+  alt USAR_MOCKS=true o sin ROCKETCHAT_URL
+    AL --> S : enviadaRocketChat = false
+  else misma carga y umbral ya enviados
+    AL --> S : no se reenvía
+  else alerta nueva
+    AL -> RC : POST /api/v1/chat.postMessage\n{channel: ROCKETCHAT_CANAL_ALERTAS}
+    RC --> AL : 200
+    AL --> S : enviadaRocketChat = true
+  end
+end
+S -> AP : guardarResultado({alertas, ...})
+AP -> BD : INSERT alerta
+U -> V : Abre el dashboard
+V -> B : pedir("/alertas")
+B -> R : GET /api/alertas
+R -> AP : alertas vigentes (caché)
+AP --> R : alertas
+R --> B : 200 {total, alertas}
+B --> V : alertas
+V --> U : Muestra las alertas en pantalla
+@enduml

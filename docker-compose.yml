@@ -1,0 +1,56 @@
+# padre-julian-lorente-carga-devs: base de datos, API y web.
+# Uso: docker compose up --build   (no requiere .env: los datos son de prueba)
+# Opcional: cp .env.example .env para cambiar la contraseña de PostgreSQL, el umbral, etc.
+# Web: http://localhost:8080   API: http://localhost:3000/api/salud
+name: padre-julian-lorente-carga-devs
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-carga_devs}
+      POSTGRES_USER: ${POSTGRES_USER:-carga_devs}
+      # Contraseña local por defecto para el prototipo (datos ficticios). Cámbiala en .env fuera de tu equipo.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-carga_devs_local}
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    ports:
+      - "127.0.0.1:5432:5432" # Solo accesible desde este equipo.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: padre-julian-lorente-carga-devs-backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 3000
+      FRONTEND_URL: http://localhost:8080
+      # El backend usa PostgreSQL (AlmacenPostgres). Tiene prioridad sobre DATABASE_URL del .env.
+      DATABASE_URL: postgres://${POSTGRES_USER:-carga_devs}:${POSTGRES_PASSWORD:-carga_devs_local}@postgres:5432/${POSTGRES_DB:-carga_devs}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: padre-julian-lorente-carga-devs-frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  datos-postgres:

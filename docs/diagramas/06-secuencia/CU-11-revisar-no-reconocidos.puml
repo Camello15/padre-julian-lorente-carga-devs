@@ -1,0 +1,44 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-11 Revisar registros no reconocidos
+actor "Administrador TI" as ATI
+participant "PanelAdministracionTI.jsx" as P <<vista>>
+boundary "api.js" as B <<borde>>
+control "requierePermiso\n('configurar')" as M <<controlador>>
+control "rutas/datos.js" as R <<controlador>>
+entity "AlmacenPostgres" as AP <<entidad>>
+entity "RegistroNoReconocido" as RN <<entidad>>
+database "PostgreSQL" as BD
+
+note over ATI, BD : Requiere CU-01 y el rol Administrador TI
+ATI -> P : Abre "Administración TI"
+P -> B : pedir("/registros-no-reconocidos")
+B -> M : GET /api/registros-no-reconocidos\n(?todos=true incluye revisados)
+alt sin permiso configurar
+  M --> B : 403
+  B --> P : error
+else Administrador TI
+  M -> R : req.usuario
+  R -> AP : listarRegistrosNoReconocidos()
+  AP --> R : registros pendientes (caché)
+  R --> B : 200 {total, registros}
+  B --> P : lista
+  P --> ATI : Muestra código original, fuente y motivo
+end
+ATI -> P : Marca un registro como revisado\n(opcional: código de petición)
+P -> B : pedir("/registros-no-reconocidos/:id", PATCH, {peticionCodigo?})
+B -> M : PATCH /api/registros-no-reconocidos/:id
+M -> R : req.usuario
+alt peticionCodigo no existe
+  R --> B : 400
+else id no existe
+  R --> B : 404
+else válido
+  R -> AP : marcarRegistroNoReconocido(id, peticionCodigo)
+  AP -> RN : revisado = true, peticionAsignada
+  AP -> BD : UPDATE registro_no_reconocido
+  R --> B : 200 {registro}
+  B --> P : registro revisado
+  P --> ATI : Lo quita de pendientes
+end
+@enduml
