@@ -1,0 +1,45 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-10 Configurar umbral
+actor "Administrador TI" as ATI
+participant "PanelAdministracionTI.jsx" as P <<vista>>
+participant "Dashboard.jsx" as D <<vista>>
+boundary "api.js" as B <<borde>>
+control "requierePermiso\n('configurar')" as M <<controlador>>
+control "rutas/datos.js" as R <<controlador>>
+control "carga.js /\nalertas.js" as C <<controlador>>
+entity "Umbral" as UM <<entidad>>
+entity "AlmacenPostgres" as AP <<entidad>>
+database "PostgreSQL" as BD
+
+note over ATI, BD : Requiere CU-01 y el rol Administrador TI
+ATI -> P : Escribe maxPeticiones y pulsa "Guardar umbral"
+P -> B : pedir("/umbral", PUT, {maxPeticiones})
+B -> M : PUT /api/umbral
+alt rol sin permiso configurar
+  M --> B : 403
+  B --> P : error
+  P --> ATI : Muestra "sin permiso"
+else Administrador TI
+  M -> R : req.usuario
+  alt no es entero >= 1
+    R --> B : 400 (conserva el umbral anterior)
+    B --> P : error
+    P --> ATI : Muestra el motivo
+  else válido
+    R -> UM ** : {maxPeticiones, vigenteDesde, configuradoPor}
+    R -> AP : guardarUmbral(umbral)
+    AP -> BD : INSERT umbral
+    R -> C : calcularCarga(...) y generarAlertas(...)
+    C --> R : indicadores, alertas
+    R -> AP : guardarResultado({indicadores, alertas})
+    AP -> BD : INSERT indicador_carga, alerta
+    R --> B : 200 {umbral, indicadores, alertas}
+    B --> P : respuesta
+    P -> D : onUmbralActualizado(umbral, alertas)
+    D -> B : vuelve a pedir /api/carga con los filtros vigentes
+    B --> D : carga recalculada
+    D --> ATI : Gráfico y alertas recalculados
+  end
+end
+@enduml

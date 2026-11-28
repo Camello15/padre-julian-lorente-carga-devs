@@ -1,0 +1,57 @@
+@startuml
+!include estilo-secuencia.iuml
+title CU-05 Sincronizar fuentes
+actor "Programador de\ntareas (cron)" as CR
+boundary "programador.js" as PR <<borde>>
+control "Sincronizacion" as S <<controlador>>
+boundary "Conector (Redmine,\nGitlab, Glpi, RocketChat)" as CO <<borde>>
+participant "RedMine / GitLab /\nGLPI / Rocket Chat" as EX <<sistema externo>>
+control "normalizador.js\n(limpieza de datos)" as N <<controlador>>
+entity "AlmacenMemoria" as AM <<entidad>>
+entity "RepositorioSincronizacion\nPostgres" as RP <<entidad>>
+entity "AlmacenPostgres" as AP <<entidad>>
+database "PostgreSQL" as BD
+control "rutas/datos.js" as RD <<controlador>>
+boundary "api.js" as BA <<borde>>
+participant "Dashboard.jsx\n(ResumenCarga)" as V <<vista>>
+
+CR -> PR : Dispara cada */15 * * * *\n(y una vez al arrancar)
+PR -> S : ejecutar()
+note right of S : Si enEjecucion = true devuelve null\n(nunca dos a la vez)
+S -> RP : crearSincronizacion(inicio)
+RP -> BD : INSERT sincronizacion ('en-curso')
+RP --> S : id
+loop Por cada Fuente (las 4 en paralelo)
+  S -> AM : cursorFuente(nombre)
+  AM --> S : desde
+  S -> S : leerConReintentos(conector, desde)
+S -> CO : leerDatos(desde)
+  CO -> EX : GET REST (modificado desde cursor − 5 min)
+  alt responde
+    EX --> CO : datos
+    CO --> S : registros
+    S -> AM : combinarSnapshotFuente(nombre, datos)
+  else falla 3 veces
+    note over S, EX : «extend» CU-06 Registrar fallo de fuente
+  end
+end
+S -> N : unificar(datosPorFuente, desarrolladores)
+note right of N : «include» CU-07 Cruzar datos por código
+N --> S : peticiones, registrosNoReconocidos, notificaciones
+S -> S : calcularCarga(...) y generarAlertas(...)
+note right of S : «include» CU-08 · «extend» CU-09
+S -> RP : finalizarSincronizacion({id, fin, estado, fallos, snapshots})
+RP -> BD : 1 transacción: registro_fallo, sincronizacion, snapshot_fuente
+S -> S : enviarAlertaRocketChat(alerta) (CU-09)
+S -> AP : guardarResultado({peticiones, indicadores, alertas, ...})
+AP -> BD : 1 transacción: peticion, actividad_codigo,\nregistro_no_reconocido, indicador_carga, alerta
+S -> AM : confirmarSnapshotFuente(...)
+S --> PR : EstadoSincronizacion (ok | parcial | fallida)
+V -> BA : pedir("/carga" + consulta)
+BA -> RD : GET /api/carga
+RD -> AM : estadoSincronizacion
+AM --> RD : ok | parcial | fallida
+RD --> BA : 200 {resumen.ultimaSincronizacion, estadoSincronizacion}
+BA --> V : resumen
+note over V : Muestra la fecha y el estado\nde la última sincronización
+@enduml
